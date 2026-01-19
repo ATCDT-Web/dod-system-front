@@ -24,23 +24,23 @@
                 
                 <div class="stat-card">
                   <div class="stat-icon">
-                    <i class="pi pi-users"></i>
+                    <i class="pi pi-check-circle"></i>
                   </div>
                   <div class="stat-content">
-                    <h3 class="stat-title">Администраторы ОУ</h3>
+                    <h3 class="stat-title">Справки ДОД проверенные</h3>
                     <p class="stat-value">156</p>
-                    <p class="stat-change positive">+8 за месяц</p>
+                    <p class="stat-change positive">+12 за неделю</p>
                   </div>
                 </div>
                 
                 <div class="stat-card">
                   <div class="stat-icon">
-                    <i class="pi pi-shield"></i>
+                    <i class="pi pi-clock"></i>
                   </div>
                   <div class="stat-content">
-                    <h3 class="stat-title">Системные администраторы</h3>
-                    <p class="stat-value">12</p>
-                    <p class="stat-change neutral">Без изменений</p>
+                    <h3 class="stat-title">Справки ДОД на проверке</h3>
+                    <p class="stat-value">24</p>
+                    <p class="stat-change info">Ожидают проверки</p>
                   </div>
                 </div>
                 
@@ -49,9 +49,9 @@
                     <i class="pi pi-chart-line"></i>
                   </div>
                   <div class="stat-content">
-                    <h3 class="stat-title">Активность системы</h3>
-                    <p class="stat-value">98%</p>
-                    <p class="stat-change positive">+2% за неделю</p>
+                    <h3 class="stat-title">Общая активность</h3>
+                    <p class="stat-value">2,847</p>
+                    <p class="stat-change positive">+15% за неделю</p>
                   </div>
                 </div>
               </div>
@@ -61,28 +61,28 @@
                   <h3 class="section-title">Быстрые действия</h3>
                   <div class="action-buttons">
                     <Button
-                      label="Добавить учреждение"
-                      icon="pi pi-plus"
+                      label="Управление ОУ"
+                      icon="pi pi-building"
                       class="action-button"
-                      @click="addInstitution"
+                      @click="manageInstitutions"
                     />
                     <Button
-                      label="Создать администратора ОУ"
-                      icon="pi pi-user-plus"
+                      label="Проверить справки"
+                      icon="pi pi-check"
                       class="action-button"
-                      @click="createOuAdmin"
+                      @click="checkReports"
                     />
                     <Button
-                      label="Сгенерировать отчет"
-                      icon="pi pi-file-export"
+                      label="Администраторы ОУ"
+                      icon="pi pi-users"
                       class="action-button"
-                      @click="generateReport"
+                      @click="manageOuAdmins"
                     />
                     <Button
-                      label="Настройки системы"
-                      icon="pi pi-cog"
+                      label="Системные отчеты"
+                      icon="pi pi-chart-line"
                       class="action-button"
-                      @click="systemSettings"
+                      @click="systemReports"
                     />
                   </div>
                 </div>
@@ -90,24 +90,24 @@
                 <div class="section-card">
                   <h3 class="section-title">Последние события</h3>
                   <div class="events-list">
-                    <div class="event-item">
-                      <i class="pi pi-building event-icon"></i>
+                    <div class="event-item approved">
+                      <i class="pi pi-check-circle event-icon"></i>
                       <div class="event-content">
-                        <p class="event-text">Добавлено новое учреждение "МБОУ СОШ №15"</p>
+                        <p class="event-text">Одобрена справка ДОД за 2025 год</p>
                         <p class="event-time">2 часа назад</p>
                       </div>
                     </div>
-                    <div class="event-item">
-                      <i class="pi pi-user event-icon"></i>
+                    <div class="event-item pending">
+                      <i class="pi pi-clock event-icon"></i>
                       <div class="event-content">
-                        <p class="event-text">Создан новый администратор ОУ для района "Северный"</p>
+                        <p class="event-text">На проверке справка ДОД за 2025 год</p>
                         <p class="event-time">4 часа назад</p>
                       </div>
                     </div>
-                    <div class="event-item">
-                      <i class="pi pi-file event-icon"></i>
+                    <div class="event-item rejected">
+                      <i class="pi pi-times-circle event-icon"></i>
                       <div class="event-content">
-                        <p class="event-text">Сгенерирован отчет по активности за месяц</p>
+                        <p class="event-text">Отклонена справка ДОД за 2025 год</p>
                         <p class="event-time">1 день назад</p>
                       </div>
                     </div>
@@ -139,38 +139,38 @@ const userInfo = computed(() => [
 ])
 
 // Event handlers
-const addInstitution = () => {
+const manageInstitutions = () => {
   toast.add({
     severity: 'info',
-    summary: 'Добавление учреждения',
-    detail: 'Функция добавления учреждения будет реализована',
+    summary: 'Управление ОУ',
+    detail: 'Переход к управлению образовательными учреждениями',
     life: 3000
   })
 }
 
-const createOuAdmin = () => {
+const checkReports = () => {
   toast.add({
     severity: 'info',
-    summary: 'Создание администратора ОУ',
-    detail: 'Функция создания администратора ОУ будет реализована',
+    summary: 'Проверка справок',
+    detail: 'Переход к проверке справок ДОД',
     life: 3000
   })
 }
 
-const generateReport = () => {
+const manageOuAdmins = () => {
   toast.add({
     severity: 'info',
-    summary: 'Генерация отчета',
-    detail: 'Функция генерации отчета будет реализована',
+    summary: 'Администраторы ОУ',
+    detail: 'Переход к управлению администраторами ОУ',
     life: 3000
   })
 }
 
-const systemSettings = () => {
+const systemReports = () => {
   toast.add({
     severity: 'info',
-    summary: 'Настройки системы',
-    detail: 'Функция настроек системы будет реализована',
+    summary: 'Системные отчеты',
+    detail: 'Переход к системным отчетам',
     life: 3000
   })
 }
@@ -355,6 +355,8 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.4);
   border-radius: 12px;
   transition: all 0.3s ease;
+  margin-bottom: 0.75rem;
+  border-left: 4px solid transparent;
 }
 
 .event-item:hover {
@@ -362,16 +364,44 @@ onMounted(() => {
   transform: translateX(5px);
 }
 
+.event-item.approved {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.event-item.pending {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.event-item.rejected {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
 .event-icon {
   width: 40px;
   height: 40px;
-  background: rgba(22, 63, 94, 0.1);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #163F5E;
   font-size: 1.25rem;
+}
+
+.event-item.approved .event-icon {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.event-item.pending .event-icon {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.event-item.rejected .event-icon {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
 .event-content {

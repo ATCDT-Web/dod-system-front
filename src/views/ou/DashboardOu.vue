@@ -90,25 +90,25 @@
                 <div class="section-card">
                   <h3 class="section-title">Последние действия</h3>
                   <div class="actions-list">
-                    <div class="action-item">
+                    <div class="action-item approved">
                       <i class="pi pi-check-circle action-icon"></i>
                       <div class="action-content">
-                        <p class="action-text">Проверена справка ДОД "Художественное творчество"</p>
-                        <p class="action-time">30 минут назад</p>
+                        <p class="action-text">Одобрена справка ДОД за 2025 год</p>
+                        <p class="action-time">2 дня назад</p>
                       </div>
                     </div>
-                    <div class="action-item">
-                      <i class="pi pi-file action-icon"></i>
-                      <div class="action-content">
-                        <p class="action-text">Создана новая справка ДОД за II квартал</p>
-                        <p class="action-time">2 часа назад</p>
-                      </div>
-                    </div>
-                    <div class="action-item">
+                    <div class="action-item pending">
                       <i class="pi pi-clock action-icon"></i>
                       <div class="action-content">
-                        <p class="action-text">Отправлена на проверку справка "Спортивные секции"</p>
-                        <p class="action-time">4 часа назад</p>
+                        <p class="action-text">На проверке справка ДОД за 2025 год</p>
+                        <p class="action-time">1 день назад</p>
+                      </div>
+                    </div>
+                    <div class="action-item rejected">
+                      <i class="pi pi-times-circle action-icon"></i>
+                      <div class="action-content">
+                        <p class="action-text">Отклонена справка ДОД за 2025 год</p>
+                        <p class="action-time">3 дня назад</p>
                       </div>
                     </div>
                   </div>
@@ -406,6 +406,8 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.4);
   border-radius: 12px;
   transition: all 0.3s ease;
+  border-left: 4px solid transparent;
+  margin-bottom: 0.75rem;
 }
 
 .action-item:hover {
@@ -413,16 +415,44 @@ onMounted(() => {
   transform: translateX(5px);
 }
 
+.action-item.approved {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.action-item.pending {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.action-item.rejected {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
 .action-icon {
   width: 40px;
   height: 40px;
-  background: rgba(22, 63, 94, 0.1);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #163F5E;
   font-size: 1.25rem;
+}
+
+.action-item.approved .action-icon {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.action-item.pending .action-icon {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.action-item.rejected .action-icon {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
 .action-content {

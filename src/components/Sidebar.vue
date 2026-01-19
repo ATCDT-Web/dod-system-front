@@ -34,19 +34,19 @@
         <!-- Разделы только для администратора системы -->
         <template v-if="user.role === 'admin_system'">
           <li class="nav-item">
-            <router-link to="/system/institutions" class="nav-link" :class="{ active: $route.name === 'InstitutionsSystem' }">
+            <router-link to="/system/institutions" class="nav-link" :class="{ active: $route.name === 'InstitutionsSystem' || $route.name === 'InstitutionDetailSystem' }">
               <i class="pi pi-building nav-icon"></i>
               <span class="nav-text">Образовательные учреждения</span>
             </router-link>
           </li>
           <li class="nav-item">
-            <router-link to="/system/ou-admins" class="nav-link" :class="{ active: $route.name === 'OuAdminsSystem' }">
+            <router-link to="/system/ou-admins" class="nav-link" :class="{ active: $route.name === 'OuAdminsSystem' || $route.name === 'OuAdminDetailSystem' }">
               <i class="pi pi-users nav-icon"></i>
               <span class="nav-text">Администраторы ОУ</span>
             </router-link>
           </li>
           <li class="nav-item">
-            <router-link to="/system/system-admins" class="nav-link" :class="{ active: $route.name === 'SystemAdminsSystem' }">
+            <router-link to="/system/system-admins" class="nav-link" :class="{ active: $route.name === 'SystemAdminsSystem' || $route.name === 'SystemAdminDetailSystem' }">
               <i class="pi pi-shield nav-icon"></i>
               <span class="nav-text">Администраторы платформы</span>
             </router-link>

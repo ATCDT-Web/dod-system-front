@@ -32,6 +32,14 @@ import Register from './views/auth/Register.vue'
 import EmailVerification from './views/auth/EmailVerification.vue'
 // System Admin pages
 import DashboardSystem from './views/system/DashboardSystem.vue'
+import DodReportsSystem from './views/system/DodReportsSystem.vue'
+import ReportSectionsSystem from './views/system/ReportSectionsSystem.vue'
+import InstitutionsSystem from './views/system/InstitutionsSystem.vue'
+import InstitutionDetailSystem from './views/system/InstitutionDetailSystem.vue'
+import OuAdminsSystem from './views/system/OuAdminsSystem.vue'
+import OuAdminDetailSystem from './views/system/OuAdminDetailSystem.vue'
+import SystemAdminsSystem from './views/system/SystemAdminsSystem.vue'
+import SystemAdminDetailSystem from './views/system/SystemAdminDetailSystem.vue'
 
 // OU Admin pages
 import DashboardOu from './views/ou/DashboardOu.vue'
@@ -63,10 +71,14 @@ const routes: RouteRecordRaw[] = [
   
   // System Admin routes
   { path: '/system/dashboard', name: 'DashboardSystem', component: DashboardSystem },
-  { path: '/system/dod-reports', name: 'DodReportsSystem', component: DodReportsOu }, // Временно используем OU версию
-  { path: '/system/institutions', name: 'InstitutionsSystem', component: DashboardSystem }, // Временно используем дашборд
-  { path: '/system/ou-admins', name: 'OuAdminsSystem', component: DashboardSystem }, // Временно используем дашборд
-  { path: '/system/system-admins', name: 'SystemAdminsSystem', component: DashboardSystem }, // Временно используем дашборд
+    { path: '/system/dod-reports', name: 'DodReportsSystem', component: DodReportsSystem },
+    { path: '/system/report-sections/:id', name: 'ReportSectionsSystem', component: ReportSectionsSystem },
+    { path: '/system/institutions', name: 'InstitutionsSystem', component: InstitutionsSystem },
+    { path: '/system/institution-detail/:id', name: 'InstitutionDetailSystem', component: InstitutionDetailSystem },
+    { path: '/system/ou-admins', name: 'OuAdminsSystem', component: OuAdminsSystem },
+    { path: '/system/ou-admin-detail/:id', name: 'OuAdminDetailSystem', component: OuAdminDetailSystem },
+    { path: '/system/system-admins', name: 'SystemAdminsSystem', component: SystemAdminsSystem },
+    { path: '/system/system-admin-detail/:id', name: 'SystemAdminDetailSystem', component: SystemAdminDetailSystem },
   { path: '/system/reports', name: 'ReportsSystem', component: DashboardSystem }, // Временно используем дашборд
   
   // OU Admin routes
