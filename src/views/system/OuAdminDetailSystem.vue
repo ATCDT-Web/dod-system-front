@@ -29,16 +29,12 @@
                 <span>{{ ouAdmin.email }}</span>
               </div>
               <div class="info-item">
-                <label>Телефон:</label>
-                <span>{{ ouAdmin.phone }}</span>
-              </div>
-              <div class="info-item">
                 <label>Образовательное учреждение:</label>
                 <span>{{ ouAdmin.institution }}</span>
               </div>
               <div class="info-item">
                 <label>Район:</label>
-                <span>{{ ouAdmin.district }}</span>
+                <span>{{ formatDistrict(ouAdmin.district) }}</span>
               </div>
               <div class="info-item">
                 <label>Статус:</label>
@@ -79,61 +75,21 @@
           </template>
         </Card>
 
-        <!-- Список справок -->
+        <!-- Действия -->
         <Card class="reports-card">
           <template #header>
             <div class="card-header">
-              <h2>Справки ДОД</h2>
-              <div class="header-actions">
-                <Button 
-                  icon="pi pi-refresh" 
-                  label="Обновить" 
-                  class="p-button-sm p-button-text"
-                  @click="refreshReports"
-                />
-              </div>
+              <h2>Действия</h2>
             </div>
           </template>
           <template #content>
-            <div v-if="ouAdminReports.length === 0" class="no-reports">
-              <i class="pi pi-file-o no-reports-icon"></i>
-              <p>Справки ДОД не подавались</p>
-            </div>
-            <div v-else class="reports-list">
-              <div 
-                v-for="report in ouAdminReports" 
-                :key="report.id"
-                class="report-item"
-                @click="viewReport(report)"
-              >
-                <div class="report-header">
-                  <div class="report-title">
-                    <h3>{{ report.title }}</h3>
-                    <span class="report-year">{{ report.year }} год</span>
-                  </div>
-                  <Tag 
-                    :value="report.status" 
-                    :severity="getReportStatusSeverity(report.status)"
-                    class="report-status"
-                  />
-                </div>
-                <div class="report-info">
-                  <div class="report-meta">
-                    <span class="report-date">
-                      <i class="pi pi-calendar"></i>
-                      {{ formatDate(report.submittedAt) }}
-                    </span>
-                    <span class="report-sections">
-                      <i class="pi pi-list"></i>
-                      {{ report.completedSections }}/{{ report.totalSections }} разделов
-                    </span>
-                  </div>
-                  <div v-if="report.rejectionReason" class="rejection-reason">
-                    <i class="pi pi-exclamation-triangle"></i>
-                    {{ report.rejectionReason }}
-                  </div>
-                </div>
-              </div>
+            <div class="actions-grid">
+              <Button 
+                icon="pi pi-trash" 
+                label="Удалить администратора" 
+                class="action-button p-button-danger"
+                @click="deleteOuAdmin"
+              />
             </div>
           </template>
         </Card>
@@ -145,78 +101,38 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import Layout from '@/components/Layout.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+import { deleteUser, fetchUserById } from '@/services/users'
 
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 
 // Состояние
 const loading = ref(false)
 
 // Данные администратора ОУ
 const ouAdmin = ref({
-  id: '001',
-  fullName: 'Иванова Анна Сергеевна',
-  email: 'ivanova@school1.spb.ru',
-  institution: 'МБОУ СОШ №1',
-  district: 'Центральный район',
-  position: 'Директор',
+  id: '',
+  fullName: '',
+  email: '',
+  institution: '',
+  district: '',
+  position: '',
   status: 'Активен',
-  lastLogin: new Date('2024-12-20T10:30:00'),
-  reportsCount: 3,
-  phone: '+7 (812) 123-45-67',
-  createdAt: new Date('2020-09-01')
+  lastLogin: new Date(),
+  reportsCount: 0,
+  phone: '',
+  createdAt: new Date()
 })
-
-// Справки администратора ОУ
-const ouAdminReports = ref([
-  {
-    id: '001',
-    title: 'Справка о деятельности ДОД за 2024 год',
-    year: 2024,
-    status: 'Принято',
-    submittedAt: new Date('2024-03-15'),
-    completedSections: 16,
-    totalSections: 16,
-    rejectionReason: null
-  },
-  {
-    id: '002',
-    title: 'Справка о деятельности ДОД за 2023 год',
-    year: 2023,
-    status: 'На проверке',
-    submittedAt: new Date('2023-12-20'),
-    completedSections: 16,
-    totalSections: 16,
-    rejectionReason: null
-  },
-  {
-    id: '003',
-    title: 'Справка о деятельности ДОД за 2022 год',
-    year: 2022,
-    status: 'Отклонено',
-    submittedAt: new Date('2022-12-15'),
-    completedSections: 16,
-    totalSections: 16,
-    rejectionReason: 'Неполные данные по разделу 3'
-  }
-])
 
 // Методы
 const goBack = () => {
   router.push('/system/ou-admins')
-}
-
-const viewReport = (report: any) => {
-  router.push(`/system/report-sections/${report.id}`)
-}
-
-const refreshReports = () => {
-  console.log('Обновление справок')
-  // TODO: Реализовать обновление данных
 }
 
 const formatDate = (date: Date) => {
@@ -243,6 +159,18 @@ const getActivityLevel = () => {
   return 'Очень низкий'
 }
 
+const districtLabels: Record<string, string> = {
+  central: 'Центральный район',
+  north: 'Северный район',
+  south: 'Южный район',
+  east: 'Восточный район',
+  west: 'Западный район'
+}
+
+const formatDistrict = (district: string) => {
+  return districtLabels[district] || district || 'Не указан'
+}
+
 const getStatusSeverity = (status: string) => {
   switch (status) {
     case 'Активен': return 'success'
@@ -252,20 +180,67 @@ const getStatusSeverity = (status: string) => {
   }
 }
 
-const getReportStatusSeverity = (status: string) => {
-  switch (status) {
-    case 'Принято': return 'success'
-    case 'На проверке': return 'warning'
-    case 'Отклонено': return 'danger'
-    case 'Новая': return 'info'
-    default: return 'info'
+const loadAdmin = async (adminId: string) => {
+  loading.value = true
+  try {
+    const admin = await fetchUserById(adminId)
+    ouAdmin.value = {
+      id: String(admin.id),
+      fullName: admin.name || admin.email,
+      email: admin.email,
+      institution: admin.educationalInstitution || 'Не указано',
+      district: admin.district || 'Не указан',
+      position: admin.position || 'Не указано',
+      status: 'Активен',
+      lastLogin: new Date(),
+      reportsCount: 0,
+      phone: '',
+      createdAt: new Date()
+    }
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Администратор ОУ',
+      detail: 'Не удалось загрузить профиль администратора',
+      life: 3000
+    })
+    router.push('/system/ou-admins')
+  } finally {
+    loading.value = false
+  }
+}
+
+const deleteOuAdmin = async () => {
+  const confirmed = window.confirm(`Удалить администратора ${ouAdmin.value.fullName}?`)
+  if (!confirmed) return
+
+  try {
+    await deleteUser(ouAdmin.value.id)
+    toast.add({
+      severity: 'success',
+      summary: 'Удалено',
+      detail: 'Администратор удален',
+      life: 3000
+    })
+    router.push('/system/ou-admins')
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Не удалось удалить администратора'
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: message,
+      life: 3000
+    })
   }
 }
 
 onMounted(() => {
   const adminId = route.params.id
-  console.log('Загрузка администратора ОУ:', adminId)
-  // TODO: Загрузить данные администратора ОУ по ID
+  if (!adminId) {
+    router.push('/system/ou-admins')
+    return
+  }
+  loadAdmin(String(adminId))
 })
 </script>
 
