@@ -1,0 +1,22 @@
+/* Фоновые изображения для страниц авторизации */
+.login-bg {
+  background-image: url('/src/assets/bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.register-bg {
+  background-image: url('/src/assets/bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+/* Fallback цвета */
+.login-bg,
+.register-bg {
+  background-color: #667eea;
+}
