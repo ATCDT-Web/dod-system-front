@@ -19,7 +19,7 @@
               </div>
               <div class="info-item">
                 <label>Район:</label>
-                <span>{{ report.district }}</span>
+                <span>{{ formatDistrict(report.district) }}</span>
               </div>
               <div class="info-item">
                 <label>Статус:</label>
@@ -108,6 +108,7 @@
         </template>
       </Card>
     </div>
+
   </Layout>
 </template>
 
@@ -116,6 +117,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import Layout from '@/components/Layout.vue'
+import { fetchUsers, type BackendUser } from '@/services/users'
+import { fetchContactInfo, fetchMainInfo, fetchUnit, type MainInfo } from '@/services/reports'
 
 const route = useRoute()
 const router = useRouter()
@@ -123,146 +126,24 @@ const toast = useToast()
 
 // Данные справки
 const report = ref({
-  id: '001',
-  title: 'Справка о деятельности ДОД за 2024 год',
-  institution: 'МБОУ СОШ №1',
-  district: 'Центральный район',
-  status: 'В работе',
-  completedSections: 3,
-  totalSections: 16
+  id: '',
+  title: '',
+  institution: '',
+  district: '',
+  status: 'Не проверено',
+  completedSections: 0,
+  totalSections: 0
 })
 
 // Разделы справки
-const sections = ref([
-  {
-    id: 'Общая информация',
-    title: 'Общая информация',
-    description: 'Основные сведения о справке и периоде отчетности',
-    completed: true,
-    inProgress: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 1',
-    title: 'Сведения об организации',
-    description: 'Информация о наименовании, адресе, контактах организации',
-    completed: true,
-    inProgress: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 2',
-    title: 'Распределение обучающихся по направлениям дополнительных общеобразовательных программ, полу и формам обучения',
-    description: 'Структура контингента обучающихся по различным критериям',
-    completed: true,
-    inProgress: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 3',
-    title: 'Возрастной состав обучающихся',
-    description: 'Распределение обучающихся по возрастным группам',
-    completed: false,
-    inProgress: true,
-    completionPercentage: 60
-  },
-  {
-    id: 'Раздел 4',
-    title: 'Распределение численности обучающихся по источникам финансирования',
-    description: 'Финансирование образовательных программ',
-    completed: false,
-    inProgress: false,
-    completionPercentage: 0
-  },
-  {
-    id: 'Раздел 5',
-    title: 'Распределение работников по уровню образования и полу',
-    description: 'Характеристика кадрового состава организации',
-    completed: false,
-    inProgress: false,
-    completionPercentage: 0
-  },
-  {
-    id: 'Раздел 6',
-    title: 'Распределение работников по возрасту',
-    description: 'Возрастная структура персонала',
-    completed: false,
-    inProgress: false,
-    completionPercentage: 0
-  },
-  {
-    id: 'Раздел 7',
-    title: 'Характеристика здания (зданий) и помещений организации',
-    description: 'Информация о материально-технической базе',
-    completed: false,
-    inProgress: false,
-    completionPercentage: 0
-  },
-  {
-    id: 'Раздел 8',
-    title: 'Сведения о помещениях',
-    description: 'Детальная информация о помещениях организации',
-    completed: false,
-    inProgress: false,
-    completionPercentage: 0
-  },
-  {
-    id: 'Раздел 9',
-    title: 'Наличие и использование площадей, квадратный метр',
-    description: 'Площади помещений и их использование',
-    completed: false,
-    inProgress: false,
-    completionPercentage: 0
-  },
-  {
-    id: 'Раздел 10',
-    title: 'Количество персональных компьютеров и информационного оборудования',
-    description: 'Техническое оснащение организации',
-    completed: false,
-    inProgress: false,
-    completionPercentage: 0
-  },
-  {
-    id: 'Раздел 11',
-    title: 'Информационная открытость организации',
-    description: 'Наличие и использование информационных ресурсов',
-    completed: false,
-    inProgress: false,
-    completionPercentage: 0
-  },
-  {
-    id: 'Раздел 12',
-    title: 'Максимальная скорость доступа к сети Интернет',
-    description: 'Технические характеристики интернет-соединения',
-    completed: false,
-    inProgress: false,
-    completionPercentage: 0
-  },
-  {
-    id: 'Раздел 13',
-    title: 'Распределение объема средств организации по источникам их получения и видам деятельности',
-    description: 'Финансовые потоки организации',
-    completed: false,
-    inProgress: false,
-    completionPercentage: 0
-  },
-  {
-    id: 'Раздел 14',
-    title: 'Расходы организации',
-    description: 'Структура расходов по различным статьям',
-    completed: false,
-    inProgress: false,
-    completionPercentage: 0
-  },
-  {
-    id: 'Раздел 15',
-    title: 'Источники финансирования внутренних затрат на внедрение и использование цифровых технологий',
-    description: 'Финансирование цифровизации образовательного процесса',
-    completed: false,
-    inProgress: false,
-    completionPercentage: 0
-  }
-])
+const sections = ref<Array<{
+  id: string
+  title: string
+  description: string
+  completed: boolean
+  inProgress: boolean
+  completionPercentage: number
+}>>([])
 
 // Computed properties
 const reportTitle = computed(() => report.value.title)
@@ -291,14 +172,10 @@ const getSectionIcon = (section: any) => {
   return 'pi pi-circle'
 }
 
-const openSection = (section: any) => {
-  toast.add({
-    severity: 'info',
-    summary: 'Открытие раздела',
-    detail: `Переход к заполнению "${section.title}"`,
-    life: 2000
-  })
-  // Здесь будет логика открытия формы заполнения раздела
+const openSection = (section: { id: string }) => {
+  const reportId = route.params.id
+  if (!reportId) return
+  router.push(`/ou/report-sections/${reportId}/section/${encodeURIComponent(section.id)}`)
 }
 
 
@@ -314,11 +191,129 @@ const submitReport = () => {
   }
 }
 
+const districtLabels: Record<string, string> = {
+  central: 'Центральный район',
+  north: 'Северный район',
+  south: 'Южный район',
+  east: 'Восточный район',
+  west: 'Западный район'
+}
+
+const formatDistrict = (district: string) => {
+  return districtLabels[district] || district || 'Не указан'
+}
+
+const countFilledFields = (data: Record<string, any>) => {
+  const entries = Object.entries(data).filter(([key]) => key !== 'id')
+  if (entries.length === 0) return { filled: 0, total: 0 }
+  const filled = entries.filter(([, value]) => {
+    if (value === null || value === undefined) return false
+    if (typeof value === 'string') return value.trim().length > 0
+    return true
+  }).length
+  return { filled, total: entries.length }
+}
+
+const buildSection = (id: string, title: string, description: string, payload: Record<string, any>) => {
+  const { filled, total } = countFilledFields(payload)
+  const completionPercentage = total === 0 ? 0 : Math.round((filled / total) * 100)
+  return {
+    id,
+    title,
+    description,
+    completed: completionPercentage === 100 && total > 0,
+    inProgress: completionPercentage > 0 && completionPercentage < 100,
+    completionPercentage
+  }
+}
+
+const sectionDefinitions = [
+  { id: 'Общая информация', title: 'Общая информация', description: 'Основные сведения о справке и периоде отчетности' },
+  { id: 'Контактная информация', title: 'Контактная информация', description: 'Контакты и ответственные лица' },
+  { id: 'Раздел 1', title: 'Сведения об организации', description: 'Информация о наименовании, адресе, контактах организации' },
+  { id: 'Раздел 2', title: 'Распределение обучающихся по направлениям дополнительных общеобразовательных программ, полу и формам обучения', description: 'Структура контингента обучающихся по различным критериям' },
+  { id: 'Раздел 3', title: 'Возрастной состав обучающихся', description: 'Распределение обучающихся по возрастным группам' },
+  { id: 'Раздел 4', title: 'Распределение численности обучающихся по источникам финансирования', description: 'Финансирование образовательных программ' },
+  { id: 'Раздел 5', title: 'Распределение работников по уровню образования и полу', description: 'Характеристика кадрового состава организации' },
+  { id: 'Раздел 6', title: 'Распределение работников по возрасту', description: 'Возрастная структура персонала' },
+  { id: 'Раздел 7', title: 'Характеристика здания (зданий) и помещений организации', description: 'Информация о материально-технической базе' },
+  { id: 'Раздел 8', title: 'Сведения о помещениях', description: 'Детальная информация о помещениях организации' },
+  { id: 'Раздел 9', title: 'Наличие и использование площадей, квадратный метр', description: 'Площади помещений и их использование' },
+  { id: 'Раздел 10', title: 'Количество персональных компьютеров и информационного оборудования', description: 'Техническое оснащение организации' },
+  { id: 'Раздел 11', title: 'Информационная открытость организации', description: 'Наличие и использование информационных ресурсов' },
+  { id: 'Раздел 12', title: 'Максимальная скорость доступа к сети Интернет', description: 'Технические характеристики интернет-соединения' },
+  { id: 'Раздел 13', title: 'Распределение объема средств организации по источникам их получения и видам деятельности', description: 'Финансовые потоки организации' },
+  { id: 'Раздел 14', title: 'Расходы организации', description: 'Структура расходов по различным статьям' },
+  { id: 'Раздел 15', title: 'Источники финансирования внутренних затрат на внедрение и использование цифровых технологий', description: 'Финансирование цифровизации образовательного процесса' },
+  { id: 'Раздел 16', title: 'Финансирование программ', description: 'Дополнительные сведения о расходах' },
+  { id: 'Раздел 17', title: 'Безопасность и охрана', description: 'Сведения о безопасности' },
+  { id: 'Раздел 18', title: 'Затраты на цифровые технологии', description: 'Внутренние затраты на ИКТ' }
+]
+
+const resolveSubmitter = (organizationName: string, users: BackendUser[]) => {
+  return users.find(user => user.educationalInstitution === organizationName)
+}
+
+const applyReportInfo = (info: MainInfo, submitter?: BackendUser) => {
+  const dateSource = info.changeDate2 || info.changeDate1
+  const submittedAt = dateSource ? new Date(dateSource) : new Date()
+  const year = submittedAt.getFullYear()
+  report.value = {
+    id: String(info.id),
+    title: `Справка о деятельности ДОД за ${year} год`,
+    institution: info.organizationName,
+    district: formatDistrict(submitter?.district || 'Не указан'),
+    status: info.changeNumber2 ? 'Проверено' : 'Не проверено',
+    completedSections: 0,
+    totalSections: 0
+  }
+}
+
+const loadReportSections = async (reportId: string) => {
+  try {
+    const [mainInfo, contactInfo, users] = await Promise.all([
+      fetchMainInfo(reportId),
+      fetchContactInfo(reportId),
+      fetchUsers()
+    ])
+
+    const submitter = resolveSubmitter(mainInfo.organizationName, users)
+    applyReportInfo(mainInfo, submitter)
+
+    const unitNumbers = Array.from({ length: 18 }, (_, index) => index + 1)
+    const unitResults = await Promise.all(unitNumbers.map(num => fetchUnit(num, reportId)))
+
+    const sectionsList = [
+      buildSection(sectionDefinitions[0].id, sectionDefinitions[0].title, sectionDefinitions[0].description, mainInfo as unknown as Record<string, any>),
+      buildSection(sectionDefinitions[1].id, sectionDefinitions[1].title, sectionDefinitions[1].description, contactInfo as unknown as Record<string, any>),
+      ...unitResults.map((payload, index) => {
+        const def = sectionDefinitions[index + 2]
+        return buildSection(def.id, def.title, def.description, payload)
+      })
+    ]
+
+    sections.value = sectionsList
+    report.value.completedSections = sectionsList.filter(section => section.completed).length
+    report.value.totalSections = sectionsList.length
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Справка',
+      detail: 'Не удалось загрузить разделы справки',
+      life: 3000
+    })
+    router.push('/ou/dod-reports')
+  }
+}
+
 // Lifecycle
 onMounted(() => {
-  // Инициализация данных справки на основе ID из роута
   const reportId = route.params.id
-  console.log('Загружаем справку:', reportId)
+  if (!reportId) {
+    router.push('/ou/dod-reports')
+    return
+  }
+  loadReportSections(String(reportId))
 })
 </script>
 

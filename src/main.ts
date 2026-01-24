@@ -33,6 +33,7 @@ import Register from './views/auth/Register.vue'
 import DashboardSystem from './views/system/DashboardSystem.vue'
 import DodReportsSystem from './views/system/DodReportsSystem.vue'
 import ReportSectionsSystem from './views/system/ReportSectionsSystem.vue'
+import ReportSectionDetail from './views/ReportSectionDetail.vue'
 import InstitutionsSystem from './views/system/InstitutionsSystem.vue'
 import InstitutionDetailSystem from './views/system/InstitutionDetailSystem.vue'
 import OuAdminsSystem from './views/system/OuAdminsSystem.vue'
@@ -69,8 +70,9 @@ const routes: RouteRecordRaw[] = [
   
   // System Admin routes
   { path: '/system/dashboard', name: 'DashboardSystem', component: DashboardSystem, meta: { requiresAuth: true } },
-    { path: '/system/dod-reports', name: 'DodReportsSystem', component: DodReportsSystem, meta: { requiresAuth: true } },
+  { path: '/system/dod-reports', name: 'DodReportsSystem', component: DodReportsSystem, meta: { requiresAuth: true } },
     { path: '/system/report-sections/:id', name: 'ReportSectionsSystem', component: ReportSectionsSystem, meta: { requiresAuth: true } },
+    { path: '/system/report-sections/:id/section/:sectionId', name: 'ReportSectionDetailSystem', component: ReportSectionDetail, meta: { requiresAuth: true } },
     { path: '/system/institutions', name: 'InstitutionsSystem', component: InstitutionsSystem, meta: { requiresAuth: true } },
     { path: '/system/institution-detail/:id', name: 'InstitutionDetailSystem', component: InstitutionDetailSystem, meta: { requiresAuth: true } },
     { path: '/system/ou-admins', name: 'OuAdminsSystem', component: OuAdminsSystem, meta: { requiresAuth: true } },
@@ -83,6 +85,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/ou/dashboard', name: 'DashboardOu', component: DashboardOu, meta: { requiresAuth: true } },
   { path: '/ou/dod-reports', name: 'DodReportsOu', component: DodReportsOu, meta: { requiresAuth: true } },
   { path: '/ou/report-sections/:id', name: 'ReportSectionsOu', component: ReportSectionsOu, meta: { requiresAuth: true } },
+  { path: '/ou/report-sections/:id/section/:sectionId', name: 'ReportSectionDetailOu', component: ReportSectionDetail, meta: { requiresAuth: true } },
   { path: '/ou/settings', name: 'SettingsOu', component: SettingsOu, meta: { requiresAuth: true } },
   
   // Common routes

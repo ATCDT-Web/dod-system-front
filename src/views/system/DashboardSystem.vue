@@ -17,8 +17,8 @@
                   </div>
                   <div class="stat-content">
                     <h3 class="stat-title">Образовательные учреждения</h3>
-                    <p class="stat-value">89</p>
-                    <p class="stat-change positive">+3 за месяц</p>
+                    <p class="stat-value">{{ institutionsCount }}</p>
+                    <p class="stat-change neutral">Всего учреждений</p>
                   </div>
                 </div>
                 
@@ -28,8 +28,8 @@
                   </div>
                   <div class="stat-content">
                     <h3 class="stat-title">Справки ДОД проверенные</h3>
-                    <p class="stat-value">156</p>
-                    <p class="stat-change positive">+12 за неделю</p>
+                    <p class="stat-value">{{ acceptedReports }}</p>
+                    <p class="stat-change positive">Принято</p>
                   </div>
                 </div>
                 
@@ -39,19 +39,19 @@
                   </div>
                   <div class="stat-content">
                     <h3 class="stat-title">Справки ДОД на проверке</h3>
-                    <p class="stat-value">24</p>
+                    <p class="stat-value">{{ pendingReports }}</p>
                     <p class="stat-change info">Ожидают проверки</p>
                   </div>
                 </div>
                 
                 <div class="stat-card">
                   <div class="stat-icon">
-                    <i class="pi pi-chart-line"></i>
+                    <i class="pi pi-times-circle"></i>
                   </div>
                   <div class="stat-content">
-                    <h3 class="stat-title">Общая активность</h3>
-                    <p class="stat-value">2,847</p>
-                    <p class="stat-change positive">+15% за неделю</p>
+                    <h3 class="stat-title">Справки ДОД отклоненные</h3>
+                    <p class="stat-value">{{ rejectedReports }}</p>
+                    <p class="stat-change neutral">Отклонено</p>
                   </div>
                 </div>
               </div>
@@ -86,33 +86,6 @@
                     />
                   </div>
                 </div>
-                
-                <div class="section-card">
-                  <h3 class="section-title">Последние события</h3>
-                  <div class="events-list">
-                    <div class="event-item approved">
-                      <i class="pi pi-check-circle event-icon"></i>
-                      <div class="event-content">
-                        <p class="event-text">Одобрена справка ДОД за 2025 год</p>
-                        <p class="event-time">2 часа назад</p>
-                      </div>
-                    </div>
-                    <div class="event-item pending">
-                      <i class="pi pi-clock event-icon"></i>
-                      <div class="event-content">
-                        <p class="event-text">На проверке справка ДОД за 2025 год</p>
-                        <p class="event-time">4 часа назад</p>
-                      </div>
-                    </div>
-                    <div class="event-item rejected">
-                      <i class="pi pi-times-circle event-icon"></i>
-                      <div class="event-content">
-                        <p class="event-text">Отклонена справка ДОД за 2025 год</p>
-                        <p class="event-time">1 день назад</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </template>
           </Card>
@@ -122,14 +95,22 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import Layout from '@/components/Layout.vue'
 import type { User } from '@/types'
 import { getStoredUser } from '@/services/auth'
+import { fetchUsers } from '@/services/users'
+import { fetchMainInfoList } from '@/services/reports'
 
 // Reactive data
 const toast = useToast()
+const router = useRouter()
 const user = ref<User>({} as User)
+const institutionsCount = ref(0)
+const acceptedReports = ref(0)
+const pendingReports = ref(0)
+const rejectedReports = ref(0)
 
 // Computed properties
 const userInfo = computed(() => [
@@ -141,46 +122,52 @@ const userInfo = computed(() => [
 
 // Event handlers
 const manageInstitutions = () => {
-  toast.add({
-    severity: 'info',
-    summary: 'Управление ОУ',
-    detail: 'Переход к управлению образовательными учреждениями',
-    life: 3000
-  })
+  router.push('/system/institutions')
 }
 
 const checkReports = () => {
-  toast.add({
-    severity: 'info',
-    summary: 'Проверка справок',
-    detail: 'Переход к проверке справок ДОД',
-    life: 3000
-  })
+  router.push('/system/dod-reports')
 }
 
 const manageOuAdmins = () => {
-  toast.add({
-    severity: 'info',
-    summary: 'Администраторы ОУ',
-    detail: 'Переход к управлению администраторами ОУ',
-    life: 3000
-  })
+  router.push('/system/ou-admins')
 }
 
 const systemReports = () => {
-  toast.add({
-    severity: 'info',
-    summary: 'Системные отчеты',
-    detail: 'Переход к системным отчетам',
-    life: 3000
-  })
+  router.push('/system/dod-reports')
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   const storedUser = getStoredUser()
   if (storedUser) {
     user.value = storedUser
+  }
+
+  try {
+    const [users, reportsPage] = await Promise.all([
+      fetchUsers(),
+      fetchMainInfoList(0, 2000)
+    ])
+
+    const institutionSet = new Set(
+      users
+        .map(userItem => userItem.educationalInstitution)
+        .filter((name): name is string => Boolean(name && name.trim()))
+    )
+    institutionsCount.value = institutionSet.size
+
+    const reports = reportsPage.content
+    acceptedReports.value = reports.filter(report => report.status === 'Принято').length
+    pendingReports.value = reports.filter(report => report.status === 'На проверке').length
+    rejectedReports.value = reports.filter(report => report.status === 'Отклонено').length
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Дашборд',
+      detail: 'Не удалось загрузить данные для панели',
+      life: 3000
+    })
   }
 })
 </script>
@@ -288,7 +275,7 @@ onMounted(() => {
 
 .admin-sections {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  grid-template-columns: 1fr;
   gap: 2rem;
 }
 
@@ -310,11 +297,12 @@ onMounted(() => {
 
 .action-buttons {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1rem;
 }
 
 .action-button {
+  width: 100%;
   background: rgba(22, 63, 94, 0.1);
   border: 1px solid rgba(22, 63, 94, 0.3);
   color: #163F5E;
@@ -330,84 +318,6 @@ onMounted(() => {
   transform: translateY(-1px);
 }
 
-.events-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.event-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.4);
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  margin-bottom: 0.75rem;
-  border-left: 4px solid transparent;
-}
-
-.event-item:hover {
-  background: rgba(255, 255, 255, 0.6);
-  transform: translateX(5px);
-}
-
-.event-item.approved {
-  border-left-color: #10b981;
-  background: rgba(16, 185, 129, 0.1);
-}
-
-.event-item.pending {
-  border-left-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.1);
-}
-
-.event-item.rejected {
-  border-left-color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
-}
-
-.event-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-}
-
-.event-item.approved .event-icon {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-}
-
-.event-item.pending .event-icon {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
-}
-
-.event-item.rejected .event-icon {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-
-.event-content {
-  flex: 1;
-}
-
-.event-text {
-  font-weight: 500;
-  color: #2c3e50;
-  margin: 0 0 0.25rem 0;
-}
-
-.event-time {
-  font-size: 0.8rem;
-  color: #6b7280;
-  margin: 0;
-}
 
 @keyframes fadeIn {
   from { opacity: 0; }

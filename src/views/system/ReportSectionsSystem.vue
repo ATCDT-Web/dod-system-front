@@ -95,6 +95,14 @@
               />
             </div>
           </div>
+
+          <div v-if="reportData.status === 'Отклонено' && reportData.rejectionReason" class="rejection-block">
+            <div class="rejection-header">
+              <i class="pi pi-exclamation-triangle"></i>
+              <span>Причина отклонения</span>
+            </div>
+            <div class="rejection-body">{{ reportData.rejectionReason }}</div>
+          </div>
           
           <!-- Список разделов -->
           <div class="sections-list">
@@ -109,6 +117,7 @@
                   'in-progress': section.pending,
                   'not-started': !section.completed && !section.pending
                 }"
+                @click="openSection(section)"
               >
                 <div class="section-header">
                   <div class="section-number">
@@ -240,6 +249,7 @@
         />
       </template>
     </Dialog>
+
   </Layout>
 </template>
 
@@ -252,6 +262,8 @@ import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
+import { fetchUsers, type BackendUser } from '@/services/users'
+import { fetchContactInfo, fetchMainInfo, fetchUnit, updateReportStatus, type MainInfo } from '@/services/reports'
 
 const router = useRouter()
 const route = useRoute()
@@ -266,150 +278,28 @@ const rejectionReason = ref('')
 
 // Данные справки
 const reportData = ref({
-  id: '001',
-  title: 'Справка о деятельности ДОД за 2024 год',
-  institution: 'МБОУ СОШ №1',
-  district: 'Центральный район',
+  id: '',
+  title: '',
+  institution: '',
+  district: '',
   status: 'Новая',
-  submittedBy: 'Иванова А.С.',
-  submittedAt: new Date('2024-01-15'),
-  year: 2024,
-  completedSections: 16,
-  totalSections: 16,
+  submittedBy: '',
+  submittedAt: new Date(),
+  year: new Date().getFullYear(),
+  completedSections: 0,
+  totalSections: 0,
   rejectionReason: ''
 })
 
 // Разделы справки
-const sections = ref([
-  {
-    id: 'Общая информация',
-    title: 'Общая информация',
-    description: 'Основные сведения об организации',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 1',
-    title: 'Сведения об организации',
-    description: 'Информация о юридическом лице',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 2',
-    title: 'Распределение обучающихся по направлениям',
-    description: 'Данные о контингенте обучающихся',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 3',
-    title: 'Возрастной состав обучающихся',
-    description: 'Возрастные характеристики контингента',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 4',
-    title: 'Распределение численности обучающихся',
-    description: 'Источники финансирования',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 5',
-    title: 'Распределение работников по уровню образования',
-    description: 'Кадровый состав организации',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 6',
-    title: 'Распределение работников по возрасту',
-    description: 'Возрастные характеристики персонала',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 7',
-    title: 'Характеристика здания и помещений',
-    description: 'Информация о материально-технической базе',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 8',
-    title: 'Сведения о помещениях',
-    description: 'Детальная информация о помещениях',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 9',
-    title: 'Наличие и использование площадей',
-    description: 'Площади и их использование',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 10',
-    title: 'Количество персональных компьютеров',
-    description: 'Информационное оборудование',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 11',
-    title: 'Информационная открытость организации',
-    description: 'Публичная информация об организации',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 12',
-    title: 'Максимальная скорость доступа к сети Интернет',
-    description: 'Технические характеристики подключения',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 13',
-    title: 'Распределение объема средств организации',
-    description: 'Финансовые потоки организации',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 14',
-    title: 'Расходы организации',
-    description: 'Структура расходов',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  },
-  {
-    id: 'Раздел 15',
-    title: 'Источники финансирования внутренних затрат',
-    description: 'Финансирование цифровых технологий',
-    completed: true,
-    pending: false,
-    completionPercentage: 100
-  }
-])
+const sections = ref<Array<{
+  id: string
+  title: string
+  description: string
+  completed: boolean
+  pending: boolean
+  completionPercentage: number
+}>>([])
 
 // Computed properties
 const reportTitle = computed(() => reportData.value.title)
@@ -445,6 +335,12 @@ const getSectionIcon = (section: any) => {
   return 'pi pi-circle'
 }
 
+const openSection = (section: { id: string }) => {
+  const reportId = route.params.id
+  if (!reportId) return
+  router.push(`/system/report-sections/${reportId}/section/${encodeURIComponent(section.id)}`)
+}
+
 
 const goBack = () => {
   router.push('/system/dod-reports')
@@ -465,39 +361,69 @@ const rejectReport = () => {
 
 // Подтверждения действий
 const confirmTake = () => {
-  reportData.value.status = 'На проверке'
-  toast.add({
-    severity: 'success',
-    summary: 'Справка взята на проверку',
-    detail: `Справка "${reportData.value.title}" взята на проверку`,
-    life: 3000
-  })
-  showTakeDialog.value = false
+  updateStatus('На проверке')
+    .then(() => {
+      toast.add({
+        severity: 'success',
+        summary: 'Справка взята на проверку',
+        detail: `Справка "${reportData.value.title}" взята на проверку`,
+        life: 3000
+      })
+      showTakeDialog.value = false
+    })
+    .catch(() => {
+      toast.add({
+        severity: 'error',
+        summary: 'Справка',
+        detail: 'Не удалось обновить статус справки',
+        life: 3000
+      })
+    })
 }
 
 const confirmApprove = () => {
-  reportData.value.status = 'Принято'
-  toast.add({
-    severity: 'success',
-    summary: 'Справка принята',
-    detail: `Справка "${reportData.value.title}" успешно принята`,
-    life: 3000
-  })
-  showApproveDialog.value = false
+  updateStatus('Принято')
+    .then(() => {
+      toast.add({
+        severity: 'success',
+        summary: 'Справка принята',
+        detail: `Справка "${reportData.value.title}" успешно принята`,
+        life: 3000
+      })
+      showApproveDialog.value = false
+    })
+    .catch(() => {
+      toast.add({
+        severity: 'error',
+        summary: 'Справка',
+        detail: 'Не удалось обновить статус справки',
+        life: 3000
+      })
+    })
 }
 
 const confirmReject = () => {
   if (rejectionReason.value.trim()) {
-    reportData.value.status = 'Отклонено'
-    reportData.value.rejectionReason = rejectionReason.value
-    toast.add({
-      severity: 'warn',
-      summary: 'Справка отклонена',
-      detail: `Справка "${reportData.value.title}" отклонена`,
-      life: 3000
-    })
-    showRejectDialog.value = false
-    rejectionReason.value = ''
+    const reason = rejectionReason.value
+    updateStatus('Отклонено', reason)
+      .then(() => {
+        toast.add({
+          severity: 'warn',
+          summary: 'Справка отклонена',
+          detail: `Справка "${reportData.value.title}" отклонена`,
+          life: 3000
+        })
+        showRejectDialog.value = false
+        rejectionReason.value = ''
+      })
+      .catch(() => {
+        toast.add({
+          severity: 'error',
+          summary: 'Справка',
+          detail: 'Не удалось обновить статус справки',
+          life: 3000
+        })
+      })
   } else {
     toast.add({
       severity: 'error',
@@ -522,10 +448,142 @@ const cancelReject = () => {
   rejectionReason.value = ''
 }
 
+const districtLabels: Record<string, string> = {
+  central: 'Центральный район',
+  north: 'Северный район',
+  south: 'Южный район',
+  east: 'Восточный район',
+  west: 'Западный район'
+}
+
+const formatDistrict = (district: string) => {
+  return districtLabels[district] || district || 'Не указан'
+}
+
+const countFilledFields = (data: Record<string, any>) => {
+  const entries = Object.entries(data).filter(([key]) => key !== 'id')
+  if (entries.length === 0) return { filled: 0, total: 0 }
+  const filled = entries.filter(([, value]) => {
+    if (value === null || value === undefined) return false
+    if (typeof value === 'string') return value.trim().length > 0
+    return true
+  }).length
+  return { filled, total: entries.length }
+}
+
+const buildSection = (id: string, title: string, description: string, payload: Record<string, any>) => {
+  const { filled, total } = countFilledFields(payload)
+  const completionPercentage = total === 0 ? 0 : Math.round((filled / total) * 100)
+  return {
+    id,
+    title,
+    description,
+    completed: completionPercentage === 100 && total > 0,
+    pending: completionPercentage > 0 && completionPercentage < 100,
+    completionPercentage
+  }
+}
+
+const sectionDefinitions = [
+  { id: 'Общая информация', title: 'Общая информация', description: 'Основные сведения об организации' },
+  { id: 'Контактная информация', title: 'Контактная информация', description: 'Контакты и ответственные лица' },
+  { id: 'Раздел 1', title: 'Сведения об организации', description: 'Информация о юридическом лице' },
+  { id: 'Раздел 2', title: 'Распределение обучающихся по направлениям', description: 'Данные о контингенте обучающихся' },
+  { id: 'Раздел 3', title: 'Возрастной состав обучающихся', description: 'Возрастные характеристики контингента' },
+  { id: 'Раздел 4', title: 'Распределение численности обучающихся', description: 'Источники финансирования' },
+  { id: 'Раздел 5', title: 'Распределение работников по уровню образования', description: 'Кадровый состав организации' },
+  { id: 'Раздел 6', title: 'Распределение работников по возрасту', description: 'Возрастные характеристики персонала' },
+  { id: 'Раздел 7', title: 'Характеристика здания и помещений', description: 'Информация о материально-технической базе' },
+  { id: 'Раздел 8', title: 'Сведения о помещениях', description: 'Детальная информация о помещениях' },
+  { id: 'Раздел 9', title: 'Наличие и использование площадей', description: 'Площади и их использование' },
+  { id: 'Раздел 10', title: 'Количество персональных компьютеров', description: 'Информационное оборудование' },
+  { id: 'Раздел 11', title: 'Информационная открытость организации', description: 'Публичная информация об организации' },
+  { id: 'Раздел 12', title: 'Максимальная скорость доступа к сети Интернет', description: 'Технические характеристики подключения' },
+  { id: 'Раздел 13', title: 'Распределение объема средств организации', description: 'Финансовые потоки организации' },
+  { id: 'Раздел 14', title: 'Расходы организации', description: 'Структура расходов' },
+  { id: 'Раздел 15', title: 'Источники финансирования внутренних затрат', description: 'Финансирование цифровых технологий' },
+  { id: 'Раздел 16', title: 'Финансирование программ', description: 'Дополнительные сведения о расходах' },
+  { id: 'Раздел 17', title: 'Безопасность и охрана', description: 'Сведения о безопасности' },
+  { id: 'Раздел 18', title: 'Затраты на цифровые технологии', description: 'Внутренние затраты на ИКТ' }
+]
+
+const resolveSubmitter = (organizationName: string, users: BackendUser[]) => {
+  return users.find(user => user.educationalInstitution === organizationName)
+}
+
+const applyReportInfo = (info: MainInfo, submitter?: BackendUser) => {
+  const dateSource = info.changeDate2 || info.changeDate1
+  const submittedAt = dateSource ? new Date(dateSource) : new Date()
+  const year = submittedAt.getFullYear()
+  reportData.value = {
+    id: String(info.id),
+    title: `Справка о деятельности ДОД за ${year} год`,
+    institution: info.organizationName,
+    district: formatDistrict(submitter?.district || 'Не указан'),
+    status: info.status || (info.changeNumber2 ? 'На проверке' : 'Новая'),
+    submittedBy: submitter?.name || submitter?.email || 'Не указано',
+    submittedAt,
+    year,
+    completedSections: 0,
+    totalSections: 0,
+    rejectionReason: info.rejectionReason || ''
+  }
+}
+
+const updateStatus = async (status: string, reason?: string) => {
+  await updateReportStatus(reportData.value.id, status, reason)
+  reportData.value.status = status
+  reportData.value.rejectionReason = reason || ''
+}
+
+const loadReportSections = async (reportId: string) => {
+  loading.value = true
+  try {
+    const [mainInfo, contactInfo, users] = await Promise.all([
+      fetchMainInfo(reportId),
+      fetchContactInfo(reportId),
+      fetchUsers()
+    ])
+
+    const submitter = resolveSubmitter(mainInfo.organizationName, users)
+    applyReportInfo(mainInfo, submitter)
+
+    const unitNumbers = Array.from({ length: 18 }, (_, index) => index + 1)
+    const unitResults = await Promise.all(unitNumbers.map(num => fetchUnit(num, reportId)))
+
+    const sectionsList = [
+      buildSection(sectionDefinitions[0].id, sectionDefinitions[0].title, sectionDefinitions[0].description, mainInfo as unknown as Record<string, any>),
+      buildSection(sectionDefinitions[1].id, sectionDefinitions[1].title, sectionDefinitions[1].description, contactInfo as unknown as Record<string, any>),
+      ...unitResults.map((payload, index) => {
+        const def = sectionDefinitions[index + 2]
+        return buildSection(def.id, def.title, def.description, payload)
+      })
+    ]
+
+    sections.value = sectionsList
+    reportData.value.completedSections = sectionsList.filter(section => section.completed).length
+    reportData.value.totalSections = sectionsList.length
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Справка',
+      detail: 'Не удалось загрузить разделы справки',
+      life: 3000
+    })
+    router.push('/system/dod-reports')
+  } finally {
+    loading.value = false
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   const reportId = route.params.id
-  console.log('Загружена страница разделов справки:', reportId)
+  if (!reportId) {
+    router.push('/system/dod-reports')
+    return
+  }
+  loadReportSections(String(reportId))
 })
 </script>
 
@@ -655,6 +713,28 @@ onMounted(() => {
 
 .report-actions {
   margin-bottom: 2rem;
+}
+
+.rejection-block {
+  margin-bottom: 2rem;
+  border-radius: 16px;
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  background: rgba(220, 53, 69, 0.06);
+  padding: 1rem 1.25rem;
+}
+
+.rejection-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #b91c1c;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.rejection-body {
+  color: #2c3e50;
+  white-space: pre-wrap;
 }
 
 .action-buttons {

@@ -81,7 +81,7 @@
                 </div>
                 <div class="info-item">
                   <i class="pi pi-building"></i>
-                  <span>{{ report.district }}</span>
+                  <span>{{ formatDistrict(report.district) }}</span>
                 </div>
               </div>
               
@@ -283,10 +283,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import Layout from '@/components/Layout.vue'
+import { fetchUsers, type BackendUser } from '@/services/users'
+import { fetchMainInfoList, type MainInfo } from '@/services/reports'
+import { getStoredUser } from '@/services/auth'
 
 const router = useRouter()
 const toast = useToast()
@@ -301,196 +304,29 @@ const selectedYear = ref(null)
 const filteredReports = ref([])
 
 // Данные справок
-const reports = ref([
-  {
-    id: '001',
-    title: 'Справка о деятельности ДОД за 2024 год',
-    institution: 'МБОУ СОШ №1',
-    district: 'Центральный район',
-    status: 'Не проверено',
-    isChecked: false,
-    submittedBy: 'Иванова А.С.',
-    submittedAt: new Date('2024-01-15'),
-    year: 2024,
-    completedSections: 2,
-    totalSections: 5,
-    submitterDetails: {
-      fullName: 'Иванова Анна Сергеевна',
-      position: 'Заместитель директора по УВР',
-      district: 'Центральный район',
-      institution: 'МБОУ СОШ №1',
-      phone: '+7 (812) 123-45-67',
-      email: 'ivanova@school1.spb.ru'
-    },
-    sections: [
-      {
-        id: 's1',
-        title: 'Общая информация об учреждении',
-        description: 'Основные сведения об образовательном учреждении',
-        completed: true,
-        fields: [
-          { id: 'f1', label: 'Название учреждения', type: 'text', value: 'МБОУ СОШ №1', placeholder: 'Введите название' },
-          { id: 'f2', label: 'Адрес', type: 'text', value: 'ул. Невский проспект, 1', placeholder: 'Введите адрес' },
-          { id: 'f3', label: 'Количество обучающихся', type: 'number', value: 500, placeholder: 'Введите количество' }
-        ]
-      },
-      {
-        id: 's2',
-        title: 'Программы дополнительного образования',
-        description: 'Информация о реализуемых программах ДОД',
-        completed: true,
-        fields: [
-          { id: 'f4', label: 'Количество программ', type: 'number', value: 15, placeholder: 'Введите количество' },
-          { id: 'f5', label: 'Направления программ', type: 'textarea', value: 'Художественное, спортивное, техническое', placeholder: 'Опишите направления' }
-        ]
-      },
-      {
-        id: 's3',
-        title: 'Контингент обучающихся',
-        description: 'Данные о количестве и составе обучающихся',
-        completed: false,
-        fields: [
-          { id: 'f6', label: 'Общее количество обучающихся ДОД', type: 'number', value: null, placeholder: 'Введите количество' },
-          { id: 'f7', label: 'По возрастным группам', type: 'textarea', value: '', placeholder: 'Опишите распределение по возрастам' }
-        ]
-      },
-      {
-        id: 's4',
-        title: 'Кадровое обеспечение',
-        description: 'Информация о педагогических кадрах',
-        completed: false,
-        fields: [
-          { id: 'f8', label: 'Количество педагогов ДОД', type: 'number', value: null, placeholder: 'Введите количество' },
-          { id: 'f9', label: 'Квалификация педагогов', type: 'select', value: null, options: ['Высшая', 'Первая', 'Соответствие'], placeholder: 'Выберите квалификацию' }
-        ]
-      },
-      {
-        id: 's5',
-        title: 'Материально-техническое обеспечение',
-        description: 'Состояние материальной базы для ДОД',
-        completed: false,
-        fields: [
-          { id: 'f10', label: 'Количество кабинетов для ДОД', type: 'number', value: null, placeholder: 'Введите количество' },
-          { id: 'f11', label: 'Оборудование', type: 'textarea', value: '', placeholder: 'Опишите имеющееся оборудование' }
-        ]
-      }
-    ]
-  },
-  {
-    id: '002',
-    title: 'Справка о деятельности ДОД за 2023 год',
-    institution: 'МБОУ СОШ №2',
-    district: 'Северный район',
-    status: 'Проверено',
-    isChecked: true,
-    submittedBy: 'Петров В.И.',
-    submittedAt: new Date('2023-12-20'),
-    year: 2023,
-    completedSections: 4,
-    totalSections: 4,
-    submitterDetails: {
-      fullName: 'Петров Владимир Иванович',
-      position: 'Директор',
-      district: 'Северный район',
-      institution: 'МБОУ СОШ №2',
-      phone: '+7 (812) 234-56-78',
-      email: 'petrov@school2.spb.ru'
-    },
-    sections: []
-  },
-  {
-    id: '003',
-    title: 'Справка о деятельности ДОД за 2022 год',
-    institution: 'МБОУ СОШ №3',
-    district: 'Южный район',
-    status: 'Проверено',
-    isChecked: true,
-    submittedBy: 'Сидорова М.В.',
-    submittedAt: new Date('2022-12-15'),
-    year: 2022,
-    completedSections: 5,
-    totalSections: 5,
-    submitterDetails: {
-      fullName: 'Сидорова Мария Владимировна',
-      position: 'Заместитель директора по УВР',
-      district: 'Южный район',
-      institution: 'МБОУ СОШ №3',
-      phone: '+7 (812) 345-67-89',
-      email: 'sidorova@school3.spb.ru'
-    },
-    sections: []
-  },
-  {
-    id: '004',
-    title: 'Справка о деятельности ДОД за 2025 год',
-    institution: 'МБОУ СОШ №4',
-    district: 'Восточный район',
-    status: 'Не проверено',
-    isChecked: false,
-    submittedBy: 'Козлов А.П.',
-    submittedAt: new Date('2025-01-10'),
-    year: 2025,
-    completedSections: 1,
-    totalSections: 5,
-    submitterDetails: {
-      fullName: 'Козлов Алексей Петрович',
-      position: 'Директор',
-      district: 'Восточный район',
-      institution: 'МБОУ СОШ №4',
-      phone: '+7 (812) 456-78-90',
-      email: 'kozlov@school4.spb.ru'
-    },
-    sections: []
-  },
-  {
-    id: '005',
-    title: 'Справка о деятельности ДОД за 2023 год',
-    institution: 'МБОУ СОШ №5',
-    district: 'Западный район',
-    status: 'Отклонено',
-    isChecked: false,
-    isRejected: true,
-    submittedBy: 'Смирнов Д.А.',
-    submittedAt: new Date('2023-11-20'),
-    year: 2023,
-    completedSections: 0,
-    totalSections: 16,
-    rejectionReason: 'Неполные данные по разделу 3. Требуется указать возрастной состав обучающихся с разбивкой по возрастным группам.',
-    submittedByDetails: {
-      fullName: 'Смирнов Дмитрий Александрович',
-      position: 'Заместитель директора по УВР',
-      district: 'Западный район',
-      institution: 'МБОУ СОШ №5',
-      phone: '+7 (812) 567-89-01',
-      email: 'smirnov@school5.spb.ru'
-    },
-    sections: []
-  },
-  {
-    id: '006',
-    title: 'Справка о деятельности ДОД за 2024 год',
-    institution: 'МБОУ СОШ №6',
-    district: 'Южный район',
-    status: 'Отклонено',
-    isChecked: false,
-    isRejected: true,
-    submittedBy: 'Кузнецова Е.В.',
-    submittedAt: new Date('2024-02-15'),
-    year: 2024,
-    completedSections: 0,
-    totalSections: 16,
-    rejectionReason: 'Отсутствуют данные по источникам финансирования (раздел 4). Необходимо предоставить полную информацию о бюджетном и внебюджетном финансировании.',
-    submittedByDetails: {
-      fullName: 'Кузнецова Елена Владимировна',
-      position: 'Директор',
-      district: 'Южный район',
-      institution: 'МБОУ СОШ №6',
-      phone: '+7 (812) 678-90-12',
-      email: 'kuznetsova@school6.spb.ru'
-    },
-    sections: []
+const reports = ref<Array<{
+  id: string
+  title: string
+  institution: string
+  district: string
+  status: string
+  isChecked: boolean
+  isRejected?: boolean
+  submittedBy: string
+  submittedAt: Date
+  year: number
+  completedSections: number
+  totalSections: number
+  submitterDetails: {
+    fullName: string
+    position: string
+    district: string
+    institution: string
+    phone: string
+    email: string
   }
-])
+  sections: any[]
+}>>([])
 
 // Computed properties
 const availableYears = computed(() => {
@@ -609,6 +445,75 @@ const getStatusSeverity = (status: string) => {
 const formatDate = (date: Date) => {
   return date.toLocaleDateString('ru-RU')
 }
+
+const districtLabels: Record<string, string> = {
+  central: 'Центральный район',
+  north: 'Северный район',
+  south: 'Южный район',
+  east: 'Восточный район',
+  west: 'Западный район'
+}
+
+const formatDistrict = (district: string) => {
+  return districtLabels[district] || district || 'Не указан'
+}
+
+const resolveSubmitter = (organizationName: string, users: BackendUser[]) => {
+  return users.find(user => user.educationalInstitution === organizationName)
+}
+
+const mapReport = (info: MainInfo, users: BackendUser[]) => {
+  const dateSource = info.changeDate2 || info.changeDate1
+  const submittedAt = dateSource ? new Date(dateSource) : new Date()
+  const year = submittedAt.getFullYear()
+  const submitter = resolveSubmitter(info.organizationName, users)
+  const isChecked = Boolean(info.changeNumber2)
+  return {
+    id: String(info.id),
+    title: `Справка о деятельности ДОД за ${year} год`,
+    institution: info.organizationName,
+    district: submitter?.district || 'Не указан',
+    status: isChecked ? 'Проверено' : 'Не проверено',
+    isChecked,
+    submittedBy: submitter?.name || submitter?.email || 'Не указано',
+    submittedAt,
+    year,
+    completedSections: 0,
+    totalSections: 18,
+    submitterDetails: {
+      fullName: submitter?.name || 'Не указано',
+      position: submitter?.position || 'Не указано',
+      district: formatDistrict(submitter?.district || 'Не указан'),
+      institution: submitter?.educationalInstitution || info.organizationName,
+      phone: '',
+      email: submitter?.email || 'Не указано'
+    },
+    sections: []
+  }
+}
+
+onMounted(async () => {
+  try {
+    const [mainInfoPage, users] = await Promise.all([
+      fetchMainInfoList(0, 100),
+      fetchUsers()
+    ])
+    const currentUser = getStoredUser()
+    const userInstitution = currentUser?.institutionName
+
+    const mapped = mainInfoPage.content.map(info => mapReport(info, users))
+    reports.value = userInstitution
+      ? mapped.filter(report => report.institution === userInstitution)
+      : mapped
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Справки ДОД',
+      detail: 'Не удалось загрузить список справок',
+      life: 3000
+    })
+  }
+})
 </script>
 
 <style scoped>

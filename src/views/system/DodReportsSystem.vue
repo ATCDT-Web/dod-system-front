@@ -35,6 +35,11 @@
                   @click="activeTab = 'new'"
                 />
                 <Button
+                  :label="`Принятые (${acceptedReports.length})`"
+                  :class="['tab-button', { active: activeTab === 'accepted' }]"
+                  @click="activeTab = 'accepted'"
+                />
+                <Button
                   :label="`Отклоненные (${rejectedReports.length})`"
                   :class="['tab-button', { active: activeTab === 'rejected' }]"
                   @click="activeTab = 'rejected'"
@@ -80,7 +85,7 @@
               
               <Column field="district" header="Район" :sortable="true">
                 <template #body="slotProps">
-                  <span class="report-district">{{ slotProps.data.district }}</span>
+                  <span class="report-district">{{ formatDistrict(slotProps.data.district) }}</span>
                 </template>
               </Column>
               
@@ -107,6 +112,13 @@
                 <template #body="slotProps">
                   <div class="action-buttons">
                     <Button
+                      v-if="slotProps.data.status === 'Отклонено' && slotProps.data.rejectionReason"
+                      label="Причина"
+                      icon="pi pi-info-circle"
+                      class="p-button-sm p-button-text p-button-secondary"
+                      @click.stop="openRejectionReason(slotProps.data)"
+                    />
+                    <Button
                       label="Открыть"
                       icon="pi pi-external-link"
                       class="p-button-sm p-button-secondary"
@@ -120,6 +132,28 @@
         </template>
       </Card>
     </div>
+
+    <Dialog
+      v-model:visible="showReasonDialog"
+      header="Причина отклонения"
+      :modal="true"
+      :style="{ width: '520px' }"
+      class="reason-dialog"
+    >
+      <div class="reason-content">
+        <p class="reason-title">{{ reasonTitle }}</p>
+        <div class="reason-text">{{ reasonText }}</div>
+      </div>
+
+      <template #footer>
+        <Button
+          label="Закрыть"
+          icon="pi pi-times"
+          class="p-button-text"
+          @click="showReasonDialog = false"
+        />
+      </template>
+    </Dialog>
     
   </Layout>
 </template>
@@ -134,262 +168,35 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
+import Dialog from 'primevue/dialog'
+import { fetchUsers, type BackendUser } from '@/services/users'
+import { fetchMainInfoList, type MainInfo } from '@/services/reports'
 
 const router = useRouter()
 const toast = useToast()
 
 // Состояние
-const activeTab = ref<'new' | 'rejected' | 'pending'>('new')
+const activeTab = ref<'new' | 'rejected' | 'pending' | 'accepted'>('new')
 const selectedYear = ref(null)
 const loading = ref(false)
+const showReasonDialog = ref(false)
+const reasonText = ref('')
+const reasonTitle = ref('')
 
 // Данные справок
-const reports = ref([
-  {
-    id: '001',
-    title: 'Справка о деятельности ДОД за 2024 год',
-    institution: 'МБОУ СОШ №1',
-    district: 'Центральный район',
-    status: 'Новая',
-    submittedBy: 'Иванова А.С.',
-    submittedAt: new Date('2024-01-15'),
-    year: 2024,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '002',
-    title: 'Справка о деятельности ДОД за 2023 год',
-    institution: 'МБОУ СОШ №2',
-    district: 'Северный район',
-    status: 'На проверке',
-    submittedBy: 'Петров В.И.',
-    submittedAt: new Date('2023-12-20'),
-    year: 2023,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '003',
-    title: 'Справка о деятельности ДОД за 2022 год',
-    institution: 'МБОУ СОШ №3',
-    district: 'Южный район',
-    status: 'Отклонено',
-    submittedBy: 'Сидорова М.В.',
-    submittedAt: new Date('2022-12-15'),
-    year: 2022,
-    completedSections: 16,
-    totalSections: 16,
-    rejectionReason: 'Неполные данные по разделу 3'
-  },
-  {
-    id: '004',
-    title: 'Справка о деятельности ДОД за 2025 год',
-    institution: 'МБОУ СОШ №4',
-    district: 'Восточный район',
-    status: 'Новая',
-    submittedBy: 'Козлов А.П.',
-    submittedAt: new Date('2025-01-10'),
-    year: 2025,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '005',
-    title: 'Справка о деятельности ДОД за 2024 год',
-    institution: 'МБОУ СОШ №5',
-    district: 'Западный район',
-    status: 'На проверке',
-    submittedBy: 'Смирнов Д.А.',
-    submittedAt: new Date('2024-02-15'),
-    year: 2024,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '006',
-    title: 'Справка о деятельности ДОД за 2024 год',
-    institution: 'МБОУ СОШ №6',
-    district: 'Красногвардейский район',
-    status: 'Принято',
-    submittedBy: 'Кузнецова Е.В.',
-    submittedAt: new Date('2024-03-10'),
-    year: 2024,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '007',
-    title: 'Справка о деятельности ДОД за 2023 год',
-    institution: 'МБОУ СОШ №7',
-    district: 'Калининский район',
-    status: 'Новая',
-    submittedBy: 'Морозов С.А.',
-    submittedAt: new Date('2023-11-25'),
-    year: 2023,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '008',
-    title: 'Справка о деятельности ДОД за 2024 год',
-    institution: 'МБОУ СОШ №8',
-    district: 'Кировский район',
-    status: 'На проверке',
-    submittedBy: 'Волкова Н.П.',
-    submittedAt: new Date('2024-04-05'),
-    year: 2024,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '009',
-    title: 'Справка о деятельности ДОД за 2022 год',
-    institution: 'МБОУ СОШ №9',
-    district: 'Колпинский район',
-    status: 'Отклонено',
-    submittedBy: 'Федоров И.М.',
-    submittedAt: new Date('2022-10-30'),
-    year: 2022,
-    completedSections: 16,
-    totalSections: 16,
-    rejectionReason: 'Отсутствуют документы по финансированию'
-  },
-  {
-    id: '010',
-    title: 'Справка о деятельности ДОД за 2025 год',
-    institution: 'МБОУ СОШ №10',
-    district: 'Красносельский район',
-    status: 'Новая',
-    submittedBy: 'Соколова Л.К.',
-    submittedAt: new Date('2025-01-20'),
-    year: 2025,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '011',
-    title: 'Справка о деятельности ДОД за 2024 год',
-    institution: 'МБОУ СОШ №11',
-    district: 'Кронштадтский район',
-    status: 'Принято',
-    submittedBy: 'Лебедев А.В.',
-    submittedAt: new Date('2024-05-12'),
-    year: 2024,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '012',
-    title: 'Справка о деятельности ДОД за 2023 год',
-    institution: 'МБОУ СОШ №12',
-    district: 'Курортный район',
-    status: 'На проверке',
-    submittedBy: 'Новикова Т.С.',
-    submittedAt: new Date('2023-09-18'),
-    year: 2023,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '013',
-    title: 'Справка о деятельности ДОД за 2024 год',
-    institution: 'МБОУ СОШ №13',
-    district: 'Московский район',
-    status: 'Новая',
-    submittedBy: 'Попов Р.Д.',
-    submittedAt: new Date('2024-06-08'),
-    year: 2024,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '014',
-    title: 'Справка о деятельности ДОД за 2022 год',
-    institution: 'МБОУ СОШ №14',
-    district: 'Невский район',
-    status: 'Отклонено',
-    submittedBy: 'Семенова О.И.',
-    submittedAt: new Date('2022-08-22'),
-    year: 2022,
-    completedSections: 16,
-    totalSections: 16,
-    rejectionReason: 'Некорректные данные по контингенту'
-  },
-  {
-    id: '015',
-    title: 'Справка о деятельности ДОД за 2025 год',
-    institution: 'МБОУ СОШ №15',
-    district: 'Петроградский район',
-    status: 'На проверке',
-    submittedBy: 'Тихонов В.Г.',
-    submittedAt: new Date('2025-02-03'),
-    year: 2025,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '016',
-    title: 'Справка о деятельности ДОД за 2024 год',
-    institution: 'МБОУ СОШ №16',
-    district: 'Петродворцовый район',
-    status: 'Принято',
-    submittedBy: 'Ушакова М.А.',
-    submittedAt: new Date('2024-07-14'),
-    year: 2024,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '017',
-    title: 'Справка о деятельности ДОД за 2023 год',
-    institution: 'МБОУ СОШ №17',
-    district: 'Приморский район',
-    status: 'Новая',
-    submittedBy: 'Харитонов К.Е.',
-    submittedAt: new Date('2023-07-30'),
-    year: 2023,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '018',
-    title: 'Справка о деятельности ДОД за 2024 год',
-    institution: 'МБОУ СОШ №18',
-    district: 'Пушкинский район',
-    status: 'На проверке',
-    submittedBy: 'Цветкова А.Н.',
-    submittedAt: new Date('2024-08-25'),
-    year: 2024,
-    completedSections: 16,
-    totalSections: 16
-  },
-  {
-    id: '019',
-    title: 'Справка о деятельности ДОД за 2022 год',
-    institution: 'МБОУ СОШ №19',
-    district: 'Фрунзенский район',
-    status: 'Отклонено',
-    submittedBy: 'Шаповалов Д.С.',
-    submittedAt: new Date('2022-06-12'),
-    year: 2022,
-    completedSections: 16,
-    totalSections: 16,
-    rejectionReason: 'Несоответствие требованиям по отчетности'
-  },
-  {
-    id: '020',
-    title: 'Справка о деятельности ДОД за 2025 год',
-    institution: 'МБОУ СОШ №20',
-    district: 'Центральный район',
-    status: 'Новая',
-    submittedBy: 'Щербакова Е.В.',
-    submittedAt: new Date('2025-02-15'),
-    year: 2025,
-    completedSections: 16,
-    totalSections: 16
-  }
-])
+const reports = ref<Array<{
+  id: string
+  title: string
+  institution: string
+  district: string
+  status: string
+  submittedBy: string
+  submittedAt: Date
+  year: number
+  completedSections: number
+  totalSections: number
+  rejectionReason?: string
+}>>([])
 
 // Computed properties
 const availableYears = computed(() => {
@@ -416,6 +223,14 @@ const rejectedReports = computed(() => {
   return filtered
 })
 
+const acceptedReports = computed(() => {
+  let filtered = reports.value.filter(r => r.status === 'Принято')
+  if (selectedYear.value) {
+    filtered = filtered.filter(r => r.year === selectedYear.value)
+  }
+  return filtered
+})
+
 const pendingReports = computed(() => {
   let filtered = reports.value.filter(r => r.status === 'На проверке')
   if (selectedYear.value) {
@@ -428,6 +243,8 @@ const currentReports = computed(() => {
   switch (activeTab.value) {
     case 'new':
       return newReports.value
+    case 'accepted':
+      return acceptedReports.value
     case 'rejected':
       return rejectedReports.value
     case 'pending':
@@ -456,6 +273,18 @@ const formatDate = (date: Date) => {
   return date.toLocaleDateString('ru-RU')
 }
 
+const districtLabels: Record<string, string> = {
+  central: 'Центральный район',
+  north: 'Северный район',
+  south: 'Южный район',
+  east: 'Восточный район',
+  west: 'Западный район'
+}
+
+const formatDistrict = (district: string) => {
+  return districtLabels[district] || district || 'Не указан'
+}
+
 const onRowSelect = (event: any) => {
   console.log('Выбрана справка:', event.data)
 }
@@ -469,9 +298,56 @@ const viewSections = (report: any) => {
   router.push(`/system/report-sections/${report.id}`)
 }
 
+const openRejectionReason = (report: any) => {
+  reasonTitle.value = report.title
+  reasonText.value = report.rejectionReason || 'Причина не указана'
+  showReasonDialog.value = true
+}
+
+const resolveSubmitter = (organizationName: string, users: BackendUser[]) => {
+  return users.find(user => user.educationalInstitution === organizationName)
+}
+
+const mapReport = (info: MainInfo, users: BackendUser[]) => {
+  const dateSource = info.changeDate2 || info.changeDate1
+  const submittedAt = dateSource ? new Date(dateSource) : new Date()
+  const year = submittedAt.getFullYear()
+  const submitter = resolveSubmitter(info.organizationName, users)
+  const status = info.status || (info.changeNumber2 ? 'На проверке' : 'Новая')
+  return {
+    id: String(info.id),
+    title: `Справка о деятельности ДОД за ${year} год`,
+    institution: info.organizationName,
+    district: submitter?.district || 'Не указан',
+    status,
+    submittedBy: submitter?.name || submitter?.email || 'Не указано',
+    submittedAt,
+    year,
+    completedSections: 0,
+    totalSections: 18,
+    rejectionReason: info.rejectionReason || ''
+  }
+}
+
 // Lifecycle
-onMounted(() => {
-  console.log('Загружена страница справок ДОД для системного администратора')
+onMounted(async () => {
+  loading.value = true
+  try {
+    const [mainInfoPage, users] = await Promise.all([
+      fetchMainInfoList(0, 100),
+      fetchUsers()
+    ])
+    reports.value = mainInfoPage.content.map(info => mapReport(info, users))
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Справки ДОД',
+      detail: 'Не удалось загрузить список справок',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
@@ -621,6 +497,27 @@ onMounted(() => {
 .action-buttons .p-button {
   font-size: 0.8rem;
   padding: 0.4rem 0.8rem;
+}
+
+.reason-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.reason-title {
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.reason-text {
+  background: rgba(220, 53, 69, 0.08);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  color: #2c3e50;
+  white-space: pre-wrap;
 }
 
 
