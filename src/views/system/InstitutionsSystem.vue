@@ -49,6 +49,8 @@
                   v-model="globalFilter" 
                   placeholder="Поиск по названию, администратору..."
                   class="search-input"
+                  autocomplete="off"
+                  name="search"
                 />
               </div>
             </div>
@@ -87,7 +89,7 @@
 
             <Column field="district" header="Район" :sortable="true">
               <template #body="{ data }">
-                <span class="district-name">{{ data.district }}</span>
+                <span class="district-name">{{ formatDistrict(data.district) }}</span>
               </template>
             </Column>
 
@@ -194,11 +196,26 @@ const institutions = ref<Array<{
 }>>([])
 
 // Опции фильтров
+const districtLabels: Record<string, string> = {
+  central: 'Центральный район',
+  north: 'Северный район',
+  south: 'Южный район',
+  east: 'Восточный район',
+  west: 'Западный район'
+}
+
+const formatDistrict = (district: string) => {
+  return districtLabels[district] || district || 'Не указан'
+}
+
 const districtOptions = computed(() => {
   const districts = [...new Set(institutions.value.map(i => i.district))].sort()
   return [
     { label: 'Все районы', value: null },
-    ...districts.map(district => ({ label: district, value: district }))
+    ...districts.map(district => ({
+      label: formatDistrict(district),
+      value: district
+    }))
   ]
 })
 
@@ -226,10 +243,10 @@ const filteredInstitutions = computed(() => {
   // Поиск
   if (globalFilter.value) {
     const searchTerm = globalFilter.value.toLowerCase()
-    filtered = filtered.filter(i => 
+    filtered = filtered.filter(i =>
       i.name.toLowerCase().includes(searchTerm) ||
       i.director.toLowerCase().includes(searchTerm) ||
-      i.district.toLowerCase().includes(searchTerm) ||
+      formatDistrict(i.district).toLowerCase().includes(searchTerm) ||
       i.type.toLowerCase().includes(searchTerm)
     )
   }

@@ -21,6 +21,8 @@
                   v-model="globalFilter" 
                   placeholder="Поиск по ФИО, email..."
                   class="search-input"
+                  autocomplete="off"
+                  name="search"
                 />
               </div>
             </div>
@@ -94,12 +96,6 @@
                     v-tooltip.top="'Редактировать'"
                   />
                   <Button 
-                    icon="pi pi-ban" 
-                    class="p-button-sm p-button-text"
-                    @click="toggleStatus(data)"
-                    v-tooltip.top="data.status === 'Активен' ? 'Заблокировать' : 'Разблокировать'"
-                  />
-                  <Button 
                     icon="pi pi-trash" 
                     class="p-button-sm p-button-text p-button-danger"
                     @click="deleteSystemAdmin(data)"
@@ -123,6 +119,16 @@
     >
       <div class="create-form">
         <div class="form-group">
+          <label for="createName">ФИО:</label>
+          <InputText 
+            id="createName"
+            v-model="newAdmin.name" 
+            placeholder="Введите ФИО"
+            class="form-input"
+          />
+        </div>
+
+        <div class="form-group">
           <label for="createEmail">Email:</label>
           <InputText 
             id="createEmail"
@@ -140,6 +146,16 @@
             placeholder="Введите пароль"
             class="form-input"
             :feedback="false"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="createPosition">Должность:</label>
+          <InputText 
+            id="createPosition"
+            v-model="newAdmin.position" 
+            placeholder="Администратор платформы"
+            class="form-input"
           />
         </div>
         
@@ -189,6 +205,27 @@
             class="form-input"
           />
         </div>
+
+        <div class="form-group">
+          <label for="editPassword">Новый пароль:</label>
+          <Password 
+            id="editPassword"
+            v-model="editingAdmin.password"
+            placeholder="Оставьте пустым, если не менять"
+            class="form-input"
+            :feedback="false"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="editPosition">Должность:</label>
+          <InputText 
+            id="editPosition"
+            v-model="editingAdmin.position" 
+            placeholder="Администратор платформы"
+            class="form-input"
+          />
+        </div>
         
       </div>
       
@@ -213,6 +250,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import Layout from '@/components/Layout.vue'
 import Card from 'primevue/card'
 import DataTable from 'primevue/datatable'
@@ -223,8 +261,11 @@ import Dropdown from 'primevue/dropdown'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import Password from 'primevue/password'
+import { deleteUser, fetchUsers, updateUser, type BackendUser } from '@/services/users'
+import { register } from '@/services/auth'
 
 const router = useRouter()
+const toast = useToast()
 
 // Состояние
 const loading = ref(false)
@@ -236,54 +277,29 @@ const editModalVisible = ref(false)
 
 // Формы
 const newAdmin = ref({
+  name: '',
   email: '',
-  password: ''
+  password: '',
+  position: ''
 })
 
 const editingAdmin = ref({
   id: '',
   fullName: '',
-  email: ''
+  email: '',
+  position: '',
+  password: ''
 })
 
 // Данные администраторов платформы
-const systemAdmins = ref([
-  {
-    id: '001',
-    fullName: 'Смирнов Алексей Владимирович',
-    email: 'smirnov@education.spb.ru',
-    lastLogin: new Date('2024-12-20T09:15:00'),
-    createdAt: new Date('2020-01-15')
-  },
-  {
-    id: '002',
-    fullName: 'Петрова Елена Сергеевна',
-    email: 'petrova@education.spb.ru',
-    lastLogin: new Date('2024-12-19T14:30:00'),
-    createdAt: new Date('2021-03-20')
-  },
-  {
-    id: '003',
-    fullName: 'Козлов Дмитрий Александрович',
-    email: 'kozlov@education.spb.ru',
-    lastLogin: new Date('2024-11-10T11:45:00'),
-    createdAt: new Date('2022-06-10')
-  },
-  {
-    id: '004',
-    fullName: 'Волкова Мария Игоревна',
-    email: 'volkova@education.spb.ru',
-    lastLogin: new Date('2024-12-20T16:20:00'),
-    createdAt: new Date('2021-09-15')
-  },
-  {
-    id: '005',
-    fullName: 'Федоров Игорь Михайлович',
-    email: 'fedorov@education.spb.ru',
-    lastLogin: new Date('2024-10-25T08:30:00'),
-    createdAt: new Date('2022-02-28')
-  }
-])
+const systemAdmins = ref<Array<{
+  id: string
+  fullName: string
+  email: string
+  position: string
+  lastLogin: Date
+  createdAt: Date
+}>>([])
 
 
 const filteredSystemAdmins = computed(() => {
@@ -303,7 +319,8 @@ const filteredSystemAdmins = computed(() => {
 
 // Валидация форм
 const isCreateFormValid = computed(() => {
-  return newAdmin.value.email && 
+  return newAdmin.value.name &&
+         newAdmin.value.email &&
          newAdmin.value.password
 })
 
@@ -323,13 +340,38 @@ const viewSystemAdmin = (admin: any) => {
 }
 
 const editSystemAdmin = (admin: any) => {
-  editingAdmin.value = { ...admin }
+  editingAdmin.value = {
+    id: admin.id,
+    fullName: admin.fullName,
+    email: admin.email,
+    position: admin.position || '',
+    password: ''
+  }
   editModalVisible.value = true
 }
 
-const deleteSystemAdmin = (admin: any) => {
-  console.log('Удаление администратора платформы:', admin)
-  // TODO: Реализовать удаление
+const deleteSystemAdmin = async (admin: any) => {
+  const confirmed = window.confirm(`Удалить администратора ${admin.fullName}?`)
+  if (!confirmed) return
+
+  try {
+    await deleteUser(admin.id)
+    toast.add({
+      severity: 'success',
+      summary: 'Удалено',
+      detail: 'Администратор удален',
+      life: 3000
+    })
+    await loadAdmins()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Не удалось удалить администратора'
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: message,
+      life: 3000
+    })
+  }
 }
 
 const toggleStatus = (admin: any) => {
@@ -339,26 +381,74 @@ const toggleStatus = (admin: any) => {
 
 const showCreateModal = () => {
   newAdmin.value = {
+    name: '',
     email: '',
-    password: ''
+    password: '',
+    position: ''
   }
   createModalVisible.value = true
 }
 
-const createSystemAdmin = () => {
-  console.log('Создание администратора платформы:', newAdmin.value)
-  // TODO: Реализовать создание
-  createModalVisible.value = false
+const createSystemAdmin = async () => {
+  try {
+    await register({
+      name: newAdmin.value.name.trim(),
+      email: newAdmin.value.email.trim(),
+      password: newAdmin.value.password,
+      district: 'central',
+      educationalInstitution: 'Комитет по образованию',
+      position: newAdmin.value.position.trim() || 'Администратор платформы',
+      admin: true
+    })
+    toast.add({
+      severity: 'success',
+      summary: 'Администратор создан',
+      detail: 'Администратор платформы успешно добавлен',
+      life: 3000
+    })
+    createModalVisible.value = false
+    await loadAdmins()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Не удалось создать администратора'
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: message,
+      life: 3000
+    })
+  }
 }
 
 const cancelCreate = () => {
   createModalVisible.value = false
 }
 
-const saveSystemAdmin = () => {
-  console.log('Сохранение администратора платформы:', editingAdmin.value)
-  // TODO: Реализовать сохранение
-  editModalVisible.value = false
+const saveSystemAdmin = async () => {
+  try {
+    await updateUser(editingAdmin.value.id, {
+      name: editingAdmin.value.fullName.trim(),
+      email: editingAdmin.value.email.trim(),
+      password: editingAdmin.value.password?.trim() ? editingAdmin.value.password : undefined,
+      position: editingAdmin.value.position?.trim() || undefined,
+      admin: true
+    })
+    toast.add({
+      severity: 'success',
+      summary: 'Сохранено',
+      detail: 'Данные администратора обновлены',
+      life: 3000
+    })
+    editModalVisible.value = false
+    await loadAdmins()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Не удалось сохранить администратора'
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: message,
+      life: 3000
+    })
+  }
 }
 
 const cancelEdit = () => {
@@ -381,8 +471,34 @@ const formatTime = (date: Date) => {
   })
 }
 
+const loadAdmins = async () => {
+  loading.value = true
+  try {
+    const users = await fetchUsers()
+    systemAdmins.value = users
+      .filter((user: BackendUser) => Boolean(user.admin))
+      .map(user => ({
+        id: String(user.id),
+        fullName: user.name || user.email,
+        email: user.email,
+        position: user.position || '',
+        lastLogin: new Date(),
+        createdAt: new Date()
+      }))
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Администраторы платформы',
+      detail: 'Не удалось загрузить список администраторов платформы',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
 onMounted(() => {
-  // Инициализация данных
+  loadAdmins()
 })
 </script>
 

@@ -11,7 +11,7 @@
           />
           <div class="header-info">
             <h1 class="page-title">{{ institution.name }}</h1>
-            <p class="page-subtitle">{{ institution.code }} • {{ institution.district }}</p>
+            <p class="page-subtitle">{{ institution.code }} • {{ formatDistrict(institution.district) }}</p>
           </div>
         </div>
       </div>
@@ -27,6 +27,10 @@
               <div class="info-item">
                 <label>Тип ОУ:</label>
                 <span>{{ institution.type }}</span>
+              </div>
+              <div class="info-item">
+                <label>Район:</label>
+                <span>{{ formatDistrict(institution.district) }}</span>
               </div>
               <div class="info-item">
                 <label>Директор:</label>
@@ -145,70 +149,47 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import Layout from '@/components/Layout.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+import { fetchUsers, type BackendUser } from '@/services/users'
 
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 
 // Состояние
 const loading = ref(false)
 
 // Данные ОУ
 const institution = ref({
-  id: '001',
-  name: 'МБОУ СОШ №1',
-  code: 'ОУ-001',
-  type: 'Средняя общеобразовательная школа',
-  district: 'Центральный район',
-  director: 'Иванова Анна Сергеевна',
-  phone: '+7 (812) 123-45-67',
-  address: 'ул. Невский проспект, д. 1',
-  studentsCount: 1250,
-  reportsCount: 3,
-  lastReport: {
-    year: 2024,
-    status: 'Принято',
-    submittedAt: new Date('2024-03-15')
-  },
-  createdAt: new Date('2020-09-01')
+  id: '',
+  name: '',
+  code: '',
+  type: 'Не указано',
+  district: '',
+  director: '',
+  phone: '',
+  address: '',
+  studentsCount: 0,
+  reportsCount: 0,
+  lastReport: null as { year: number; status: string; submittedAt: Date } | null,
+  createdAt: new Date()
 })
 
 // Справки ОУ
-const institutionReports = ref([
-  {
-    id: '001',
-    title: 'Справка о деятельности ДОД за 2024 год',
-    year: 2024,
-    status: 'Принято',
-    submittedAt: new Date('2024-03-15'),
-    completedSections: 16,
-    totalSections: 16,
-    rejectionReason: null
-  },
-  {
-    id: '002',
-    title: 'Справка о деятельности ДОД за 2023 год',
-    year: 2023,
-    status: 'На проверке',
-    submittedAt: new Date('2023-12-20'),
-    completedSections: 16,
-    totalSections: 16,
-    rejectionReason: null
-  },
-  {
-    id: '003',
-    title: 'Справка о деятельности ДОД за 2022 год',
-    year: 2022,
-    status: 'Отклонено',
-    submittedAt: new Date('2022-12-15'),
-    completedSections: 16,
-    totalSections: 16,
-    rejectionReason: 'Неполные данные по разделу 3'
-  }
-])
+const institutionReports = ref<Array<{
+  id: string
+  title: string
+  year: number
+  status: string
+  submittedAt: Date
+  completedSections: number
+  totalSections: number
+  rejectionReason: string | null
+}>>([])
 
 // Computed properties
 const acceptedReports = computed(() => 
@@ -245,6 +226,18 @@ const formatDate = (date: Date) => {
   })
 }
 
+const districtLabels: Record<string, string> = {
+  central: 'Центральный район',
+  north: 'Северный район',
+  south: 'Южный район',
+  east: 'Восточный район',
+  west: 'Западный район'
+}
+
+const formatDistrict = (district: string) => {
+  return districtLabels[district] || district || 'Не указан'
+}
+
 const getReportStatusSeverity = (status: string) => {
   switch (status) {
     case 'Принято': return 'success'
@@ -255,10 +248,62 @@ const getReportStatusSeverity = (status: string) => {
   }
 }
 
-onMounted(() => {
+const buildInstitutionFromUser = (user: BackendUser) => {
+  const numericId = typeof user.id === 'number' ? user.id : Number(user.id)
+  institution.value = {
+    id: String(user.id ?? ''),
+    name: user.educationalInstitution || 'Не указано',
+    code: `ОУ-${String(Number.isFinite(numericId) ? numericId : 0).padStart(3, '0')}`,
+    type: 'Не указано',
+    district: user.district || 'Не указан',
+    director: user.name || user.email,
+    phone: '',
+    address: '',
+    studentsCount: 0,
+    reportsCount: 0,
+    lastReport: null,
+    createdAt: new Date()
+  }
+}
+
+onMounted(async () => {
   const institutionId = route.params.id
-  console.log('Загрузка ОУ:', institutionId)
-  // TODO: Загрузить данные ОУ по ID
+  if (!institutionId) {
+    toast.add({
+      severity: 'warn',
+      summary: 'ОУ',
+      detail: 'Не удалось определить учреждение',
+      life: 3000
+    })
+    router.push('/system/institutions')
+    return
+  }
+
+  loading.value = true
+  try {
+    const users = await fetchUsers()
+    const match = users.find(user => String(user.id) === String(institutionId))
+    if (!match) {
+      toast.add({
+        severity: 'warn',
+        summary: 'ОУ',
+        detail: 'Учреждение не найдено',
+        life: 3000
+      })
+      router.push('/system/institutions')
+      return
+    }
+    buildInstitutionFromUser(match)
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'ОУ',
+      detail: 'Не удалось загрузить данные учреждения',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 

@@ -29,6 +29,10 @@
                 <span>{{ systemAdmin.email }}</span>
               </div>
               <div class="info-item">
+                <label>Должность:</label>
+                <span>{{ systemAdmin.position || 'Не указано' }}</span>
+              </div>
+              <div class="info-item">
                 <label>Дата создания:</label>
                 <span>{{ formatDate(systemAdmin.createdAt) }}</span>
               </div>
@@ -82,24 +86,28 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import Layout from '@/components/Layout.vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+import { deleteUser, fetchUserById } from '@/services/users'
 
 const router = useRouter()
 const route = useRoute()
+const toast = useToast()
 
 // Состояние
 const loading = ref(false)
 
 // Данные администратора платформы
 const systemAdmin = ref({
-  id: '001',
-  fullName: 'Смирнов Алексей Владимирович',
-  email: 'smirnov@education.spb.ru',
-  lastLogin: new Date('2024-12-20T09:15:00'),
-  createdAt: new Date('2020-01-15')
+  id: '',
+  fullName: '',
+  email: '',
+  position: '',
+  lastLogin: new Date(),
+  createdAt: new Date()
 })
 
 // Методы
@@ -108,8 +116,7 @@ const goBack = () => {
 }
 
 const editSystemAdmin = () => {
-  console.log('Редактирование администратора платформы')
-  // TODO: Реализовать редактирование
+  router.push('/system/system-admins')
 }
 
 const changePassword = () => {
@@ -118,9 +125,28 @@ const changePassword = () => {
 }
 
 
-const deleteSystemAdmin = () => {
-  console.log('Удаление администратора платформы')
-  // TODO: Реализовать удаление
+const deleteSystemAdmin = async () => {
+  const confirmed = window.confirm(`Удалить администратора ${systemAdmin.value.fullName}?`)
+  if (!confirmed) return
+
+  try {
+    await deleteUser(systemAdmin.value.id)
+    toast.add({
+      severity: 'success',
+      summary: 'Удалено',
+      detail: 'Администратор удален',
+      life: 3000
+    })
+    router.push('/system/system-admins')
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Не удалось удалить администратора'
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: message,
+      life: 3000
+    })
+  }
 }
 
 const formatDate = (date: Date) => {
@@ -150,8 +176,37 @@ const getDaysSinceLogin = () => {
 
 onMounted(() => {
   const adminId = route.params.id
-  console.log('Загрузка администратора платформы:', adminId)
-  // TODO: Загрузить данные администратора платформы по ID
+  if (!adminId) {
+    router.push('/system/system-admins')
+    return
+  }
+
+  const loadAdmin = async () => {
+    loading.value = true
+    try {
+      const admin = await fetchUserById(String(adminId))
+      systemAdmin.value = {
+        id: String(admin.id),
+        fullName: admin.name || admin.email,
+        email: admin.email,
+        position: admin.position || '',
+        lastLogin: new Date(),
+        createdAt: new Date()
+      }
+    } catch {
+      toast.add({
+        severity: 'error',
+        summary: 'Администратор',
+        detail: 'Не удалось загрузить профиль администратора',
+        life: 3000
+      })
+      router.push('/system/system-admins')
+    } finally {
+      loading.value = false
+    }
+  }
+
+  loadAdmin()
 })
 </script>
 

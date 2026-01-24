@@ -49,6 +49,8 @@
                   v-model="globalFilter" 
                   placeholder="Поиск по ФИО, email, ОУ..."
                   class="search-input"
+                  autocomplete="off"
+                  name="search"
                 />
               </div>
             </div>
@@ -83,7 +85,7 @@
               <template #body="{ data }">
                 <div class="institution-info">
                   <div class="institution-name">{{ data.institution }}</div>
-                  <small class="institution-district">{{ data.district }}</small>
+                  <small class="institution-district">{{ formatDistrict(data.district) }}</small>
                 </div>
               </template>
             </Column>
@@ -152,6 +154,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import Layout from '@/components/Layout.vue'
 import Card from 'primevue/card'
 import DataTable from 'primevue/datatable'
@@ -160,8 +163,10 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import Tag from 'primevue/tag'
+import { fetchUsers, type BackendUser } from '@/services/users'
 
 const router = useRouter()
+const toast = useToast()
 
 // Состояние
 const loading = ref(false)
@@ -170,145 +175,38 @@ const selectedDistrict = ref(null)
 const selectedStatus = ref(null)
 
 // Данные администраторов ОУ
-const ouAdmins = ref([
-  {
-    id: '001',
-    fullName: 'Иванова Анна Сергеевна',
-    email: 'ivanova@school1.spb.ru',
-    institution: 'МБОУ СОШ №1',
-    district: 'Центральный район',
-    position: 'Директор',
-    status: 'Активен',
-    lastLogin: new Date('2024-12-20T10:30:00'),
-    reportsCount: 3,
-    phone: '+7 (812) 123-45-67',
-    createdAt: new Date('2020-09-01')
-  },
-  {
-    id: '002',
-    fullName: 'Петров Владимир Иванович',
-    email: 'petrov@school2.spb.ru',
-    institution: 'МБОУ СОШ №2',
-    district: 'Северный район',
-    position: 'Заместитель директора',
-    status: 'Активен',
-    lastLogin: new Date('2024-12-19T14:15:00'),
-    reportsCount: 2,
-    phone: '+7 (812) 234-56-78',
-    createdAt: new Date('2021-03-15')
-  },
-  {
-    id: '003',
-    fullName: 'Сидорова Мария Владимировна',
-    email: 'sidorova@school3.spb.ru',
-    institution: 'МБОУ СОШ №3',
-    district: 'Южный район',
-    position: 'Директор',
-    status: 'Заблокирован',
-    lastLogin: new Date('2024-11-15T09:20:00'),
-    reportsCount: 1,
-    phone: '+7 (812) 345-67-89',
-    createdAt: new Date('2019-08-20')
-  },
-  {
-    id: '004',
-    fullName: 'Козлов Алексей Петрович',
-    email: 'kozlov@school4.spb.ru',
-    institution: 'МБОУ СОШ №4',
-    district: 'Восточный район',
-    position: 'Директор',
-    status: 'Активен',
-    lastLogin: new Date('2024-12-20T16:45:00'),
-    reportsCount: 0,
-    phone: '+7 (812) 456-78-90',
-    createdAt: new Date('2022-01-10')
-  },
-  {
-    id: '005',
-    fullName: 'Смирнов Дмитрий Александрович',
-    email: 'smirnov@school5.spb.ru',
-    institution: 'МБОУ СОШ №5',
-    district: 'Западный район',
-    position: 'Заместитель директора',
-    status: 'Активен',
-    lastLogin: new Date('2024-12-18T11:30:00'),
-    reportsCount: 4,
-    phone: '+7 (812) 567-89-01',
-    createdAt: new Date('2020-11-05')
-  },
-  {
-    id: '006',
-    fullName: 'Кузнецова Елена Владимировна',
-    email: 'kuznetsova@school6.spb.ru',
-    institution: 'МБОУ СОШ №6',
-    district: 'Красногвардейский район',
-    position: 'Директор',
-    status: 'Активен',
-    lastLogin: new Date('2024-12-19T13:20:00'),
-    reportsCount: 2,
-    phone: '+7 (812) 678-90-12',
-    createdAt: new Date('2021-06-15')
-  },
-  {
-    id: '007',
-    fullName: 'Морозов Сергей Алексеевич',
-    email: 'morozov@school7.spb.ru',
-    institution: 'МБОУ СОШ №7',
-    district: 'Калининский район',
-    position: 'Директор',
-    status: 'Неактивен',
-    lastLogin: new Date('2024-10-25T08:15:00'),
-    reportsCount: 1,
-    phone: '+7 (812) 789-01-23',
-    createdAt: new Date('2019-12-01')
-  },
-  {
-    id: '008',
-    fullName: 'Волкова Наталья Петровна',
-    email: 'volkova@school8.spb.ru',
-    institution: 'МБОУ СОШ №8',
-    district: 'Кировский район',
-    position: 'Заместитель директора',
-    status: 'Активен',
-    lastLogin: new Date('2024-12-20T15:10:00'),
-    reportsCount: 3,
-    phone: '+7 (812) 890-12-34',
-    createdAt: new Date('2021-09-20')
-  },
-  {
-    id: '009',
-    fullName: 'Федоров Игорь Михайлович',
-    email: 'fedorov@school9.spb.ru',
-    institution: 'МБОУ СОШ №9',
-    district: 'Колпинский район',
-    position: 'Директор',
-    status: 'Заблокирован',
-    lastLogin: new Date('2024-09-30T12:45:00'),
-    reportsCount: 1,
-    phone: '+7 (812) 901-23-45',
-    createdAt: new Date('2020-04-12')
-  },
-  {
-    id: '010',
-    fullName: 'Соколова Людмила Константиновна',
-    email: 'sokolova@school10.spb.ru',
-    institution: 'МБОУ СОШ №10',
-    district: 'Красносельский район',
-    position: 'Директор',
-    status: 'Активен',
-    lastLogin: new Date('2024-12-19T17:30:00'),
-    reportsCount: 0,
-    phone: '+7 (812) 012-34-56',
-    createdAt: new Date('2022-02-28')
-  }
-])
+const ouAdmins = ref<Array<{
+  id: string
+  fullName: string
+  email: string
+  institution: string
+  district: string
+  position: string
+  status: string
+  lastLogin: Date
+  reportsCount: number
+  phone: string
+  createdAt: Date
+}>>([])
+
+const districtLabels: Record<string, string> = {
+  central: 'Центральный район',
+  north: 'Северный район',
+  south: 'Южный район',
+  east: 'Восточный район',
+  west: 'Западный район'
+}
+
+const formatDistrict = (district: string) => {
+  return districtLabels[district] || district || 'Не указан'
+}
 
 // Опции фильтров
 const districtOptions = computed(() => {
   const districts = [...new Set(ouAdmins.value.map(a => a.district))].sort()
   return [
     { label: 'Все районы', value: null },
-    ...districts.map(district => ({ label: district, value: district }))
+    ...districts.map(district => ({ label: formatDistrict(district), value: district }))
   ]
 })
 
@@ -335,10 +233,11 @@ const filteredOuAdmins = computed(() => {
   // Поиск
   if (globalFilter.value) {
     const searchTerm = globalFilter.value.toLowerCase()
-    filtered = filtered.filter(a => 
+    filtered = filtered.filter(a =>
       a.fullName.toLowerCase().includes(searchTerm) ||
       a.email.toLowerCase().includes(searchTerm) ||
       a.institution.toLowerCase().includes(searchTerm) ||
+      formatDistrict(a.district).toLowerCase().includes(searchTerm) ||
       a.position.toLowerCase().includes(searchTerm)
     )
   }
@@ -405,8 +304,39 @@ const formatTime = (date: Date) => {
   })
 }
 
-onMounted(() => {
-  // Инициализация данных
+const buildOuAdmins = (users: BackendUser[]) => {
+  ouAdmins.value = users
+    .filter(user => !user.admin && user.educationalInstitution)
+    .map(user => ({
+      id: String(user.id),
+      fullName: user.name || user.email,
+      email: user.email,
+      institution: user.educationalInstitution || 'Не указано',
+      district: user.district || 'Не указан',
+      position: user.position || 'Не указано',
+      status: 'Активен',
+      lastLogin: new Date(),
+      reportsCount: 0,
+      phone: '',
+      createdAt: new Date()
+    }))
+}
+
+onMounted(async () => {
+  loading.value = true
+  try {
+    const users = await fetchUsers()
+    buildOuAdmins(users)
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Администраторы ОУ',
+      detail: 'Не удалось загрузить список администраторов ОУ',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
