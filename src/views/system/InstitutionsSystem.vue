@@ -157,6 +157,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from 'primevue/usetoast'
 import Layout from '@/components/Layout.vue'
 import Card from 'primevue/card'
 import DataTable from 'primevue/datatable'
@@ -165,8 +166,10 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import Tag from 'primevue/tag'
+import { fetchUsers, type BackendUser } from '@/services/users'
 
 const router = useRouter()
+const toast = useToast()
 
 // Состояние
 const loading = ref(false)
@@ -175,180 +178,20 @@ const selectedDistrict = ref(null)
 const selectedType = ref(null)
 
 // Данные ОУ
-const institutions = ref([
-  {
-    id: '001',
-    name: 'МБОУ СОШ №1',
-    code: 'ОУ-001',
-    type: 'Средняя общеобразовательная школа',
-    district: 'Центральный район',
-    director: 'Иванова Анна Сергеевна',
-    phone: '+7 (812) 123-45-67',
-    address: 'ул. Невский проспект, д. 1',
-    studentsCount: 1250,
-    reportsCount: 3,
-    lastReport: {
-      year: 2024,
-      status: 'Принято',
-      submittedAt: new Date('2024-03-15')
-    },
-    createdAt: new Date('2020-09-01')
-  },
-  {
-    id: '002',
-    name: 'МБОУ СОШ №2',
-    code: 'ОУ-002',
-    type: 'Средняя общеобразовательная школа',
-    district: 'Северный район',
-    director: 'Петров Владимир Иванович',
-    phone: '+7 (812) 234-56-78',
-    address: 'ул. Ленина, д. 15',
-    studentsCount: 980,
-    reportsCount: 2,
-    lastReport: {
-      year: 2023,
-      status: 'На проверке',
-      submittedAt: new Date('2023-12-20')
-    },
-    createdAt: new Date('2019-09-01')
-  },
-  {
-    id: '003',
-    name: 'МБОУ СОШ №3',
-    code: 'ОУ-003',
-    type: 'Средняя общеобразовательная школа',
-    district: 'Южный район',
-    director: 'Сидорова Мария Владимировна',
-    phone: '+7 (812) 345-67-89',
-    address: 'пр. Победы, д. 25',
-    studentsCount: 1100,
-    reportsCount: 1,
-    lastReport: {
-      year: 2022,
-      status: 'Отклонено',
-      submittedAt: new Date('2022-12-15')
-    },
-    createdAt: new Date('2021-09-01')
-  },
-  {
-    id: '004',
-    name: 'МБОУ СОШ №4',
-    code: 'ОУ-004',
-    type: 'Средняя общеобразовательная школа',
-    district: 'Восточный район',
-    director: 'Козлов Алексей Петрович',
-    phone: '+7 (812) 456-78-90',
-    address: 'ул. Мира, д. 8',
-    studentsCount: 850,
-    reportsCount: 0,
-    lastReport: null,
-    createdAt: new Date('2022-09-01')
-  },
-  {
-    id: '005',
-    name: 'МБОУ СОШ №5',
-    code: 'ОУ-005',
-    type: 'Средняя общеобразовательная школа',
-    district: 'Западный район',
-    director: 'Смирнов Дмитрий Александрович',
-    phone: '+7 (812) 567-89-01',
-    address: 'ул. Пушкина, д. 12',
-    studentsCount: 1350,
-    reportsCount: 4,
-    lastReport: {
-      year: 2024,
-      status: 'Принято',
-      submittedAt: new Date('2024-02-15')
-    },
-    createdAt: new Date('2018-09-01')
-  },
-  {
-    id: '006',
-    name: 'МБОУ СОШ №6',
-    code: 'ОУ-006',
-    type: 'Средняя общеобразовательная школа',
-    district: 'Красногвардейский район',
-    director: 'Кузнецова Елена Владимировна',
-    phone: '+7 (812) 678-90-12',
-    address: 'ул. Гагарина, д. 30',
-    studentsCount: 920,
-    reportsCount: 2,
-    lastReport: {
-      year: 2024,
-      status: 'Принято',
-      submittedAt: new Date('2024-03-10')
-    },
-    createdAt: new Date('2020-09-01')
-  },
-  {
-    id: '007',
-    name: 'МБОУ СОШ №7',
-    code: 'ОУ-007',
-    type: 'Средняя общеобразовательная школа',
-    district: 'Калининский район',
-    director: 'Морозов Сергей Алексеевич',
-    phone: '+7 (812) 789-01-23',
-    address: 'пр. Науки, д. 45',
-    studentsCount: 1080,
-    reportsCount: 1,
-    lastReport: {
-      year: 2023,
-      status: 'Новая',
-      submittedAt: new Date('2023-11-25')
-    },
-    createdAt: new Date('2019-09-01')
-  },
-  {
-    id: '008',
-    name: 'МБОУ СОШ №8',
-    code: 'ОУ-008',
-    type: 'Средняя общеобразовательная школа',
-    district: 'Кировский район',
-    director: 'Волкова Наталья Петровна',
-    phone: '+7 (812) 890-12-34',
-    address: 'ул. Комсомольская, д. 18',
-    studentsCount: 1150,
-    reportsCount: 3,
-    lastReport: {
-      year: 2024,
-      status: 'На проверке',
-      submittedAt: new Date('2024-04-05')
-    },
-    createdAt: new Date('2021-09-01')
-  },
-  {
-    id: '009',
-    name: 'МБОУ СОШ №9',
-    code: 'ОУ-009',
-    type: 'Средняя общеобразовательная школа',
-    district: 'Колпинский район',
-    director: 'Федоров Игорь Михайлович',
-    phone: '+7 (812) 901-23-45',
-    address: 'ул. Советская, д. 22',
-    studentsCount: 750,
-    reportsCount: 1,
-    lastReport: {
-      year: 2022,
-      status: 'Отклонено',
-      submittedAt: new Date('2022-10-30')
-    },
-    createdAt: new Date('2020-09-01')
-  },
-  {
-    id: '010',
-    name: 'МБОУ СОШ №10',
-    code: 'ОУ-010',
-    type: 'Средняя общеобразовательная школа',
-    district: 'Красносельский район',
-    director: 'Соколова Людмила Константиновна',
-    phone: '+7 (812) 012-34-56',
-    address: 'ул. Красных Партизан, д. 5',
-    studentsCount: 1050,
-    reportsCount: 0,
-    lastReport: null,
-    createdAt: new Date('2022-09-01')
-  }
-])
+const institutions = ref<Array<{
+  id: string
+  name: string
+  code: string
+  type: string
+  district: string
+  director: string
+  phone: string
+  address: string
+  studentsCount: number
+  reportsCount: number
+  lastReport: { year: number; status: string; submittedAt: Date } | null
+  createdAt: Date
+}>>([])
 
 // Опции фильтров
 const districtOptions = computed(() => {
@@ -426,6 +269,7 @@ const getTypeSeverity = (type: string) => {
   if (type.includes('Средняя')) return 'info'
   if (type.includes('Гимназия')) return 'success'
   if (type.includes('Лицей')) return 'warning'
+  if (type.includes('Не указано')) return 'secondary'
   return 'info'
 }
 
@@ -447,8 +291,52 @@ const getReportStatusSeverity = (status: string) => {
   }
 }
 
-onMounted(() => {
-  // Инициализация данных
+const buildInstitutionsFromUsers = (users: BackendUser[]) => {
+  const map = new Map<string, typeof institutions.value[number]>()
+  let index = 1
+
+  users
+    .filter(user => !user.admin && user.educationalInstitution)
+    .forEach(user => {
+      const key = `${user.educationalInstitution}|${user.district || ''}`
+      if (map.has(key)) return
+
+      const code = `ОУ-${String(index).padStart(3, '0')}`
+      map.set(key, {
+        id: String(user.id),
+        name: user.educationalInstitution || 'Не указано',
+        code,
+        type: 'Не указано',
+        district: user.district || 'Не указан',
+        director: user.name || user.email,
+        phone: '',
+        address: '',
+        studentsCount: 0,
+        reportsCount: 0,
+        lastReport: null,
+        createdAt: new Date()
+      })
+      index += 1
+    })
+
+  institutions.value = Array.from(map.values())
+}
+
+onMounted(async () => {
+  loading.value = true
+  try {
+    const users = await fetchUsers()
+    buildInstitutionsFromUsers(users)
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'ОУ',
+      detail: 'Не удалось загрузить список образовательных учреждений',
+      life: 3000
+    })
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
