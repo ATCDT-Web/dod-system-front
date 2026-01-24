@@ -95,6 +95,7 @@ import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import logo from '@/assets/logo.svg'
 import type { User } from '@/types'
+import { logout } from '@/services/auth'
 
 interface Props {
   user: User
@@ -122,7 +123,7 @@ const router = useRouter()
 const toast = useToast()
 
 const handleLogout = (): void => {
-  localStorage.removeItem('user')
+  logout()
   toast.add({
     severity: 'info',
     summary: 'Выход',

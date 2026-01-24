@@ -125,6 +125,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Layout from '@/components/Layout.vue'
 import type { User } from '@/types'
+import { getStoredUser } from '@/services/auth'
 
 // Reactive data
 const toast = useToast()
@@ -177,21 +178,9 @@ const systemReports = () => {
 
 // Lifecycle
 onMounted(() => {
-  const userData = localStorage.getItem('user')
-  if (userData) {
-    user.value = JSON.parse(userData)
-  } else {
-    // Создаем демо-пользователя если нет данных
-    user.value = {
-      id: 'demo',
-      email: 'demo@example.com',
-      firstName: 'Демо',
-      lastName: 'Пользователь',
-      district: 'central',
-      institutionType: 'sosh',
-      institutionName: 'Демонстрационное учреждение',
-      role: 'admin_system'
-    }
+  const storedUser = getStoredUser()
+  if (storedUser) {
+    user.value = storedUser
   }
 })
 </script>

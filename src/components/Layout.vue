@@ -14,9 +14,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import Sidebar from '@/components/Sidebar.vue'
 import Footer from '@/components/Footer.vue'
 import type { User } from '@/types'
+import { getStoredUser } from '@/services/auth'
 
 // Props
 interface Props {
@@ -27,32 +29,18 @@ const props = defineProps<Props>()
 
 // Reactive data
 const user = ref<User>({} as User)
+const router = useRouter()
 
 // Lifecycle
 onMounted(() => {
   if (props.user) {
     user.value = props.user
   } else {
-    // Получаем пользователя из localStorage
-    const userData = localStorage.getItem('user')
-    if (userData) {
-      user.value = JSON.parse(userData)
+    const storedUser = getStoredUser()
+    if (storedUser) {
+      user.value = storedUser
     } else {
-      // Создаем демо-пользователя если нет данных
-      // Определяем роль на основе текущего маршрута
-      const currentPath = window.location.pathname
-      const isSystemRoute = currentPath.startsWith('/system/')
-      
-      user.value = {
-        id: 'demo',
-        email: 'demo@example.com',
-        firstName: 'Демо',
-        lastName: 'Пользователь',
-        district: 'central',
-        institutionType: 'sosh',
-        institutionName: 'Демонстрационное учреждение',
-        role: isSystemRoute ? 'admin_system' : 'admin_ou'
-      }
+      router.push('/login')
     }
   }
 })

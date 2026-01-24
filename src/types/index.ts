@@ -4,6 +4,7 @@ export interface User {
   email: string
   firstName: string
   lastName: string
+  fullName?: string
   district: string
   institutionType: string
   institutionName: string
@@ -28,6 +29,7 @@ export interface RegisterData {
   district: string
   institutionType: string
   institutionName: string
+  position: string
 }
 
 // Типы для опций выбора

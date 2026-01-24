@@ -228,6 +228,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Layout from '@/components/Layout.vue'
 import type { User } from '@/types'
+import { fetchUserProfile, getStoredUser } from '@/services/auth'
 
 const toast = useToast()
 
@@ -404,23 +405,24 @@ const formatDate = (date: string | Date) => {
 }
 
 // Lifecycle
-onMounted(() => {
-  const userData = localStorage.getItem('user')
-  if (userData) {
-    user.value = JSON.parse(userData)
-  } else {
-    // Создаем демо-пользователя если нет данных
-    user.value = {
-      id: 'demo',
-      email: 'demo@example.com',
-      fullName: 'Иванов Иван Иванович',
-      district: 'central',
-      institutionType: 'sosh',
-      institutionName: 'Демонстрационное учреждение',
-      role: 'admin_ou',
-      verified: true,
-      createdAt: new Date().toISOString()
+onMounted(async () => {
+  const storedUser = getStoredUser()
+  if (storedUser) {
+    user.value = storedUser
+  }
+
+  try {
+    const updatedUser = await fetchUserProfile()
+    if (updatedUser) {
+      user.value = updatedUser
     }
+  } catch {
+    toast.add({
+      severity: 'warn',
+      summary: 'Профиль',
+      detail: 'Не удалось обновить данные профиля с сервера',
+      life: 3000
+    })
   }
 })
 </script>

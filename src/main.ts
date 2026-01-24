@@ -29,7 +29,6 @@ import ToastService from 'primevue/toastservice'
 // Routes
 import Login from './views/auth/Login.vue'
 import Register from './views/auth/Register.vue'
-import EmailVerification from './views/auth/EmailVerification.vue'
 // System Admin pages
 import DashboardSystem from './views/system/DashboardSystem.vue'
 import DodReportsSystem from './views/system/DodReportsSystem.vue'
@@ -67,28 +66,27 @@ const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/login' },
   { path: '/login', name: 'Login', component: Login },
   { path: '/register', name: 'Register', component: Register },
-  { path: '/verify-email', name: 'EmailVerification', component: EmailVerification },
   
   // System Admin routes
-  { path: '/system/dashboard', name: 'DashboardSystem', component: DashboardSystem },
-    { path: '/system/dod-reports', name: 'DodReportsSystem', component: DodReportsSystem },
-    { path: '/system/report-sections/:id', name: 'ReportSectionsSystem', component: ReportSectionsSystem },
-    { path: '/system/institutions', name: 'InstitutionsSystem', component: InstitutionsSystem },
-    { path: '/system/institution-detail/:id', name: 'InstitutionDetailSystem', component: InstitutionDetailSystem },
-    { path: '/system/ou-admins', name: 'OuAdminsSystem', component: OuAdminsSystem },
-    { path: '/system/ou-admin-detail/:id', name: 'OuAdminDetailSystem', component: OuAdminDetailSystem },
-    { path: '/system/system-admins', name: 'SystemAdminsSystem', component: SystemAdminsSystem },
-    { path: '/system/system-admin-detail/:id', name: 'SystemAdminDetailSystem', component: SystemAdminDetailSystem },
-  { path: '/system/reports', name: 'ReportsSystem', component: DashboardSystem }, // Временно используем дашборд
+  { path: '/system/dashboard', name: 'DashboardSystem', component: DashboardSystem, meta: { requiresAuth: true } },
+    { path: '/system/dod-reports', name: 'DodReportsSystem', component: DodReportsSystem, meta: { requiresAuth: true } },
+    { path: '/system/report-sections/:id', name: 'ReportSectionsSystem', component: ReportSectionsSystem, meta: { requiresAuth: true } },
+    { path: '/system/institutions', name: 'InstitutionsSystem', component: InstitutionsSystem, meta: { requiresAuth: true } },
+    { path: '/system/institution-detail/:id', name: 'InstitutionDetailSystem', component: InstitutionDetailSystem, meta: { requiresAuth: true } },
+    { path: '/system/ou-admins', name: 'OuAdminsSystem', component: OuAdminsSystem, meta: { requiresAuth: true } },
+    { path: '/system/ou-admin-detail/:id', name: 'OuAdminDetailSystem', component: OuAdminDetailSystem, meta: { requiresAuth: true } },
+    { path: '/system/system-admins', name: 'SystemAdminsSystem', component: SystemAdminsSystem, meta: { requiresAuth: true } },
+    { path: '/system/system-admin-detail/:id', name: 'SystemAdminDetailSystem', component: SystemAdminDetailSystem, meta: { requiresAuth: true } },
+  { path: '/system/reports', name: 'ReportsSystem', component: DashboardSystem, meta: { requiresAuth: true } }, // Временно используем дашборд
   
   // OU Admin routes
-  { path: '/ou/dashboard', name: 'DashboardOu', component: DashboardOu },
-  { path: '/ou/dod-reports', name: 'DodReportsOu', component: DodReportsOu },
-  { path: '/ou/report-sections/:id', name: 'ReportSectionsOu', component: ReportSectionsOu },
-  { path: '/ou/settings', name: 'SettingsOu', component: SettingsOu },
+  { path: '/ou/dashboard', name: 'DashboardOu', component: DashboardOu, meta: { requiresAuth: true } },
+  { path: '/ou/dod-reports', name: 'DodReportsOu', component: DodReportsOu, meta: { requiresAuth: true } },
+  { path: '/ou/report-sections/:id', name: 'ReportSectionsOu', component: ReportSectionsOu, meta: { requiresAuth: true } },
+  { path: '/ou/settings', name: 'SettingsOu', component: SettingsOu, meta: { requiresAuth: true } },
   
   // Common routes
-  { path: '/dod-reports', name: 'DodReports', component: DodReports }
+  { path: '/dod-reports', name: 'DodReports', component: DodReports, meta: { requiresAuth: true } }
 ]
 
 const router = createRouter({
@@ -97,8 +95,32 @@ const router = createRouter({
 })
 
 // Navigation guard - упрощенная версия
-router.beforeEach((_to, _from, next) => {
-  // Простой переход без проверок авторизации
+router.beforeEach((to, _from, next) => {
+  const requiresAuth = Boolean(to.meta.requiresAuth)
+  const token = getToken()
+  const user = getStoredUser()
+
+  if (requiresAuth && !token) {
+    next({ path: '/login', query: { redirect: to.fullPath } })
+    return
+  }
+
+  if (!requiresAuth && token && (to.path === '/login' || to.path === '/register' || to.path === '/verify-email')) {
+    next(getHomeRoute(user))
+    return
+  }
+
+  if (token && user) {
+    if (to.path.startsWith('/system/') && user.role !== 'admin_system') {
+      next('/ou/dashboard')
+      return
+    }
+    if (to.path.startsWith('/ou/') && user.role !== 'admin_ou') {
+      next('/system/dashboard')
+      return
+    }
+  }
+
   next()
 })
 
@@ -132,3 +154,4 @@ app.component('Message', Message)
 app.component('Toast', Toast)
 
 app.mount('#app')
+import { getHomeRoute, getStoredUser, getToken } from './services/auth'

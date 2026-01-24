@@ -181,7 +181,8 @@ import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import logo from '@/assets/logo.svg'
 import PasswordStrength from '@/components/PasswordStrength.vue'
-import type { RegisterData, SelectOption, User } from '@/types'
+import type { RegisterData, SelectOption } from '@/types'
+import { register } from '@/services/auth'
 
 // Reactive data
 const router = useRouter()
@@ -197,7 +198,8 @@ const form = reactive<RegisterData & { confirmPassword: string; fullName: string
   lastName: '',
   district: '',
   institutionType: '',
-  institutionName: ''
+  institutionName: '',
+  position: ''
 })
 
 const errors = reactive<{
@@ -208,6 +210,7 @@ const errors = reactive<{
   district: string
   institutionName: string
   institutionType: string
+  position: string
 }>({
   fullName: '',
   email: '',
@@ -215,7 +218,8 @@ const errors = reactive<{
   confirmPassword: '',
   district: '',
   institutionName: '',
-  institutionType: ''
+  institutionType: '',
+  position: ''
 })
 
 // Options for dropdowns
@@ -294,6 +298,12 @@ const validateForm = (): boolean => {
     errors.institutionType = 'Вид ОУ обязателен'
     isValid = false
   }
+
+  // Position validation
+  if (!form.position.trim()) {
+    errors.position = 'Должность обязательна'
+    isValid = false
+  }
   
   return isValid
 }
@@ -305,79 +315,30 @@ const handleRegister = async (): Promise<void> => {
   loading.value = true
   
   try {
-    // Имитация API запроса
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // Проверка существования пользователя
-    const users: User[] = JSON.parse(localStorage.getItem('users') || '[]')
-    const existingUser = users.find(u => u.email === form.email)
-    
-    if (existingUser) {
-      toast.add({
-        severity: 'error',
-        summary: 'Ошибка',
-        detail: 'Пользователь с таким email уже существует',
-        life: 3000
-      })
-      return
-    }
-    
-    // Генерация кода подтверждения
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString()
-    
-    // Разделяем ФИО на имя и фамилию
-    const nameParts = form.fullName.trim().split(' ')
-    const firstName = nameParts[0] || ''
-    const lastName = nameParts.slice(1).join(' ') || ''
-    
-    // Создание нового пользователя (неподтвержденного)
-    const newUser: User = {
-      id: Date.now().toString(),
+    await register({
+      name: form.fullName.trim(),
       email: form.email,
-      firstName: firstName,
-      lastName: lastName,
+      password: form.password,
       district: form.district,
-      institutionType: form.institutionType,
-      institutionName: form.institutionName
-    }
-    
-    // Добавляем поля для подтверждения
-    const userWithVerification = {
-      ...newUser,
-      verified: false,
-      verificationCode,
-      createdAt: new Date().toISOString()
-    }
-    
-    // Сохранение пользователя
-    users.push(userWithVerification)
-    localStorage.setItem('users', JSON.stringify(users))
-    
-    // Сохранение данных для подтверждения
-    const verificationData = {
-      email: form.email,
-      code: verificationCode,
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 минут
-      attempts: 0
-    }
-    localStorage.setItem('emailVerification', JSON.stringify(verificationData))
-    
+      educationalInstitution: form.institutionName,
+      position: form.position,
+      admin: false
+    })
+
     toast.add({
       severity: 'success',
       summary: 'Регистрация завершена',
-      detail: 'Код подтверждения отправлен на ваш email. Пожалуйста, проверьте почту.',
+      detail: 'Аккаунт создан. Теперь можно войти в систему.',
       life: 5000
     })
-    
-    router.push({
-      path: '/verify-email',
-      query: { email: form.email }
-    })
+
+    router.push('/login')
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Произошла ошибка при регистрации'
     toast.add({
       severity: 'error',
       summary: 'Ошибка',
-      detail: 'Произошла ошибка при регистрации',
+      detail: message,
       life: 3000
     })
   } finally {

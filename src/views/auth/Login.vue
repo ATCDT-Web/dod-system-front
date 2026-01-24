@@ -72,6 +72,7 @@ import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import logo from '@/assets/logo.svg'
 import type { LoginCredentials } from '@/types'
+import { getHomeRoute, login } from '@/services/auth'
 
 // Reactive data
 const router = useRouter()
@@ -120,45 +121,26 @@ const validateForm = (): boolean => {
   return isValid
 }
 
-// Login handler - упрощенная версия без авторизации
+// Login handler
 const handleLogin = async (): Promise<void> => {
   if (!validateForm()) return
   
   loading.value = true
   
   try {
-    // Имитация API запроса
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-            // Создаем фиктивного пользователя для демонстрации
-            // Определяем роль на основе email
-            const isSystemAdmin = form.email.includes('system') || form.email.includes('admin')
-            const demoUser = {
-              id: 'demo',
-              email: form.email,
-              firstName: 'Демо',
-              lastName: 'Пользователь',
-              district: 'central',
-              institutionType: 'sosh',
-              institutionName: 'Демонстрационное учреждение',
-              role: isSystemAdmin ? 'admin_system' : 'admin_ou',
-              verified: true
-            }
-    
-    // Сохраняем данные пользователя
-    localStorage.setItem('user', JSON.stringify(demoUser))
-    
-    // Перенаправляем на соответствующий дашборд в зависимости от роли
-    if (demoUser.role === 'admin_system') {
-      router.push('/system/dashboard')
+    const user = await login(form)
+    const redirect = router.currentRoute.value.query.redirect
+    if (typeof redirect === 'string' && redirect.startsWith('/')) {
+      router.push(redirect)
     } else {
-      router.push('/ou/dashboard')
+      router.push(getHomeRoute(user))
     }
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Произошла ошибка при входе'
     toast.add({
       severity: 'error',
       summary: 'Ошибка',
-      detail: 'Произошла ошибка при входе',
+      detail: message,
       life: 3000
     })
   } finally {
