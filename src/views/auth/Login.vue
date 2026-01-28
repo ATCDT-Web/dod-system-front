@@ -7,7 +7,7 @@
             <div class="logo-container">
               <img :src="logo" alt="Logo" class="logo mb-3" />
             </div>
-             <h1 class="text-3xl font-bold text-gray-800">Вход в систему</h1>
+            <h1 class="text-3xl font-bold text-gray-800">Вход в систему</h1>
           </div>
         </template>
         <template #content>
@@ -51,14 +51,7 @@
               />
             </div>
 
-            <div class="text-center mt-4">
-               <p class="text-sm text-gray-600">
-                 Нет аккаунта? 
-                 <router-link to="/register" class="text-blue-600 font-semibold hover:text-blue-800 transition-colors">
-                   Зарегистрироваться
-                 </router-link>
-               </p>
-            </div>
+            
           </form>
         </template>
       </Card>
@@ -220,10 +213,11 @@ const handleLogin = async (): Promise<void> => {
 
 /* Убраны hover эффекты для плашки */
 
-  .logo-container {
-    display: flex;
-    align-items: center;
-  }
+.logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .logo {
   height: 80px;

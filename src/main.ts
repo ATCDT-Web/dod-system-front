@@ -25,10 +25,10 @@ import Password from 'primevue/password'
 import Message from 'primevue/message'
 import Toast from 'primevue/toast'
 import ToastService from 'primevue/toastservice'
+import Dialog from 'primevue/dialog'
 
 // Routes
 import Login from './views/auth/Login.vue'
-import Register from './views/auth/Register.vue'
 // System Admin pages
 import DashboardSystem from './views/system/DashboardSystem.vue'
 import DodReportsSystem from './views/system/DodReportsSystem.vue'
@@ -40,6 +40,9 @@ import OuAdminsSystem from './views/system/OuAdminsSystem.vue'
 import OuAdminDetailSystem from './views/system/OuAdminDetailSystem.vue'
 import SystemAdminsSystem from './views/system/SystemAdminsSystem.vue'
 import SystemAdminDetailSystem from './views/system/SystemAdminDetailSystem.vue'
+import CreateInstitutionSystem from './views/system/CreateInstitutionSystem.vue'
+import CreateReportSystem from './views/system/CreateReportSystem.vue'
+import ReportsSystem from './views/system/ReportsSystem.vue'
 
 // OU Admin pages
 import DashboardOu from './views/ou/DashboardOu.vue'
@@ -66,20 +69,21 @@ declare module 'vue-router' {
 const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/login' },
   { path: '/login', name: 'Login', component: Login },
-  { path: '/register', name: 'Register', component: Register },
   
   // System Admin routes
   { path: '/system/dashboard', name: 'DashboardSystem', component: DashboardSystem, meta: { requiresAuth: true } },
   { path: '/system/dod-reports', name: 'DodReportsSystem', component: DodReportsSystem, meta: { requiresAuth: true } },
+  { path: '/system/dod-reports/create', name: 'CreateReportSystem', component: CreateReportSystem, meta: { requiresAuth: true } },
     { path: '/system/report-sections/:id', name: 'ReportSectionsSystem', component: ReportSectionsSystem, meta: { requiresAuth: true } },
     { path: '/system/report-sections/:id/section/:sectionId', name: 'ReportSectionDetailSystem', component: ReportSectionDetail, meta: { requiresAuth: true } },
     { path: '/system/institutions', name: 'InstitutionsSystem', component: InstitutionsSystem, meta: { requiresAuth: true } },
+    { path: '/system/institutions/create', name: 'CreateInstitutionSystem', component: CreateInstitutionSystem, meta: { requiresAuth: true } },
     { path: '/system/institution-detail/:id', name: 'InstitutionDetailSystem', component: InstitutionDetailSystem, meta: { requiresAuth: true } },
     { path: '/system/ou-admins', name: 'OuAdminsSystem', component: OuAdminsSystem, meta: { requiresAuth: true } },
     { path: '/system/ou-admin-detail/:id', name: 'OuAdminDetailSystem', component: OuAdminDetailSystem, meta: { requiresAuth: true } },
     { path: '/system/system-admins', name: 'SystemAdminsSystem', component: SystemAdminsSystem, meta: { requiresAuth: true } },
     { path: '/system/system-admin-detail/:id', name: 'SystemAdminDetailSystem', component: SystemAdminDetailSystem, meta: { requiresAuth: true } },
-  { path: '/system/reports', name: 'ReportsSystem', component: DashboardSystem, meta: { requiresAuth: true } }, // Временно используем дашборд
+  { path: '/system/reports', name: 'ReportsSystem', component: ReportsSystem, meta: { requiresAuth: true } },
   
   // OU Admin routes
   { path: '/ou/dashboard', name: 'DashboardOu', component: DashboardOu, meta: { requiresAuth: true } },
@@ -108,8 +112,13 @@ router.beforeEach((to, _from, next) => {
     return
   }
 
-  if (!requiresAuth && token && (to.path === '/login' || to.path === '/register' || to.path === '/verify-email')) {
+  if (!requiresAuth && token && (to.path === '/login' || to.path === '/verify-email')) {
     next(getHomeRoute(user))
+    return
+  }
+
+  if (to.path === '/register') {
+    next('/login')
     return
   }
 
@@ -155,6 +164,7 @@ app.component('Dropdown', Dropdown)
 app.component('Password', Password)
 app.component('Message', Message)
 app.component('Toast', Toast)
+app.component('Dialog', Dialog)
 
 app.mount('#app')
 import { getHomeRoute, getStoredUser, getToken } from './services/auth'

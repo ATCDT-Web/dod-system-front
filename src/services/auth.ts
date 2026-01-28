@@ -1,4 +1,5 @@
 import type { LoginCredentials, User } from '@/types'
+import { API_BASE_URL, authFetch } from '@/services/api'
 
 export interface AuthResponse {
   token: string
@@ -28,7 +29,6 @@ export interface RegisterPayload {
   admin?: boolean
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082'
 const TOKEN_KEY = 'auth_token'
 const USER_KEY = 'user'
 
@@ -83,11 +83,7 @@ export const fetchUserProfile = async (): Promise<User | null> => {
   const storedUser = getStoredUser()
   if (!storedUser?.email) return null
 
-  const response = await fetch(`${API_BASE_URL}/api/user/getAllUsers`, {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
+  const response = await authFetch('/api/user/getAllUsers')
 
   if (!response.ok) {
     throw new Error('Не удалось загрузить данные профиля')

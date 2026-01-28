@@ -54,6 +54,9 @@
             rowHover
             stripedRows
           >
+            <template #empty>
+              <div class="table-empty">Данных пока нет</div>
+            </template>
             <Column field="fullName" header="ФИО" :sortable="true">
               <template #body="{ data }">
                 <div class="admin-name">
@@ -646,6 +649,13 @@ onMounted(() => {
 .action-buttons {
   display: flex;
   gap: 0.5rem;
+}
+
+.table-empty {
+  padding: 1.5rem 0;
+  text-align: center;
+  color: #6b7280;
+  font-weight: 500;
 }
 
 /* Стили для форм */

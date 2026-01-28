@@ -18,14 +18,10 @@ export interface UpdateUserPayload {
   admin?: boolean
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082'
+import { authFetch } from '@/services/api'
 
 export const fetchUsers = async (): Promise<BackendUser[]> => {
-  const response = await fetch(`${API_BASE_URL}/api/user/getAllUsers`, {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
+  const response = await authFetch('/api/user/getAllUsers')
 
   if (!response.ok) {
     throw new Error('Не удалось загрузить пользователей')
@@ -35,11 +31,7 @@ export const fetchUsers = async (): Promise<BackendUser[]> => {
 }
 
 export const fetchUserById = async (id: string): Promise<BackendUser> => {
-  const response = await fetch(`${API_BASE_URL}/api/user/${id}`, {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
+  const response = await authFetch(`/api/user/${id}`)
 
   if (!response.ok) {
     throw new Error('Не удалось загрузить пользователя')
@@ -49,11 +41,8 @@ export const fetchUserById = async (id: string): Promise<BackendUser> => {
 }
 
 export const updateUser = async (id: string, payload: UpdateUserPayload): Promise<BackendUser> => {
-  const response = await fetch(`${API_BASE_URL}/api/user/update/${id}`, {
+  const response = await authFetch(`/api/user/update/${id}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json'
-    },
     body: JSON.stringify(payload)
   })
 
@@ -65,7 +54,7 @@ export const updateUser = async (id: string, payload: UpdateUserPayload): Promis
 }
 
 export const deleteUser = async (id: string): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}/api/user/delete/${id}`, {
+  const response = await authFetch(`/api/user/delete/${id}`, {
     method: 'DELETE'
   })
 

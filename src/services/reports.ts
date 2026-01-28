@@ -1,3 +1,5 @@
+import { authFetch, authFetchForm } from '@/services/api'
+
 export interface MainInfo {
   id: number
   organizationName: string
@@ -10,6 +12,7 @@ export interface MainInfo {
   changeNumber2?: string
   status?: string
   rejectionReason?: string
+  reportTitle?: string
 }
 
 export interface ContactInfo {
@@ -30,14 +33,10 @@ export interface PageResponse<T> {
   content: T[]
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8082'
+import { authFetch } from '@/services/api'
 
 export const fetchMainInfoList = async (page = 0, size = 100): Promise<PageResponse<MainInfo>> => {
-  const response = await fetch(`${API_BASE_URL}/api/unit/getMainInfoList?page=${page}&size=${size}`, {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
+  const response = await authFetch(`/api/unit/getMainInfoList?page=${page}&size=${size}`)
 
   if (response.status === 204) {
     return { totalPages: 0, totalElements: 0, size, content: [] }
@@ -51,11 +50,7 @@ export const fetchMainInfoList = async (page = 0, size = 100): Promise<PageRespo
 }
 
 export const fetchMainInfo = async (id: string): Promise<MainInfo> => {
-  const response = await fetch(`${API_BASE_URL}/api/unit/getMainInfo?id=${id}`, {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
+  const response = await authFetch(`/api/unit/getMainInfo?id=${id}`)
 
   if (!response.ok) {
     throw new Error('Не удалось загрузить справку')
@@ -69,11 +64,8 @@ export const updateReportStatus = async (
   status: string,
   rejectionReason?: string | null
 ): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}/api/unit/updateStatus`, {
+  const response = await authFetch('/api/unit/updateStatus', {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json'
-    },
     body: JSON.stringify({
       id: Number(id),
       status,
@@ -87,11 +79,7 @@ export const updateReportStatus = async (
 }
 
 export const fetchContactInfo = async (id: string): Promise<ContactInfo> => {
-  const response = await fetch(`${API_BASE_URL}/api/unit/getContactInfo?id=${id}`, {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
+  const response = await authFetch(`/api/unit/getContactInfo?id=${id}`)
 
   if (!response.ok) {
     throw new Error('Не удалось загрузить контактные данные')
@@ -101,15 +89,79 @@ export const fetchContactInfo = async (id: string): Promise<ContactInfo> => {
 }
 
 export const fetchUnit = async (unitNumber: number, id: string): Promise<Record<string, any>> => {
-  const response = await fetch(`${API_BASE_URL}/api/unit/getUnit${unitNumber}?id=${id}`, {
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  })
+  const response = await authFetch(`/api/unit/getUnit${unitNumber}?id=${id}`)
 
   if (!response.ok) {
     throw new Error(`Не удалось загрузить раздел ${unitNumber}`)
   }
 
   return (await response.json()) as Record<string, any>
+}
+
+export interface ImportExcelError {
+  section: string
+  field: string
+  cell: string
+  message: string
+}
+
+export interface ImportExcelResponse {
+  updatedSections: string[]
+  errors: ImportExcelError[]
+}
+
+export const importReportExcel = async (
+  id: string,
+  files: File[],
+  mode: 'partial' | 'full' = 'partial'
+): Promise<ImportExcelResponse> => {
+  const formData = new FormData()
+  files.forEach(file => formData.append('files', file))
+
+  const response = await authFetchForm(
+    `/api/unit/importExcel?reportId=${encodeURIComponent(id)}&mode=${encodeURIComponent(mode)}`,
+    {
+    method: 'POST',
+    body: formData
+  })
+
+  if (!response.ok) {
+    throw new Error('Не удалось импортировать Excel')
+  }
+
+  return (await response.json()) as ImportExcelResponse
+}
+
+export const downloadUnitExcel = async (unit: number, organizationName: string): Promise<Blob> => {
+  const response = await authFetch(`/api/unit/export/unit${unit}/${encodeURIComponent(organizationName)}`, {
+    method: 'GET'
+  })
+
+  if (!response.ok) {
+    throw new Error('Не удалось сформировать Excel')
+  }
+
+  return await response.blob()
+}
+
+export const downloadUnitExcelByDistrict = async (unit: number, district: string): Promise<Blob> => {
+  const response = await authFetch(`/api/unit/export/unit/${unit}/district/${encodeURIComponent(district)}`, {
+    method: 'GET'
+  })
+
+  if (!response.ok) {
+    throw new Error('Не удалось сформировать Excel')
+  }
+
+  return await response.blob()
+}
+
+export const deleteReport = async (id: number): Promise<void> => {
+  const response = await authFetch(`/api/unit/delete/${id}`, {
+    method: 'DELETE'
+  })
+
+  if (!response.ok) {
+    throw new Error('Не удалось удалить справку')
+  }
 }

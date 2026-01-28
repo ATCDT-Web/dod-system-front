@@ -1,5 +1,5 @@
 <template>
-  <div ref="sidebarRef" class="sidebar">
+  <div ref="sidebarRef" class="sidebar" :class="{ 'no-animation': !shouldAnimate }">
     <div class="sidebar-header">
       <div class="logo-container">
         <img :src="logo" alt="Logo" class="logo" />
@@ -105,16 +105,13 @@ defineProps<Props>()
 
 // Управление анимацией сайдбара
 const sidebarRef = ref<HTMLElement>()
+const shouldAnimate = ref(false)
+
+const sidebarShown = sessionStorage.getItem('sidebar-shown')
+shouldAnimate.value = !sidebarShown
 
 onMounted(() => {
-  // Проверяем, был ли сайдбар уже показан в этой сессии
-  const sidebarShown = sessionStorage.getItem('sidebar-shown')
-  
-  if (sidebarShown && sidebarRef.value) {
-    // Если уже был показан, убираем анимацию
-    sidebarRef.value.classList.add('no-animation')
-  } else {
-    // Если первый раз, отмечаем что показан
+  if (!sidebarShown) {
     sessionStorage.setItem('sidebar-shown', 'true')
   }
 })

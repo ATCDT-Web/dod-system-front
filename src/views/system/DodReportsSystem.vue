@@ -3,30 +3,52 @@
     <div class="dod-reports-system">
       <Card class="reports-main-card">
         <template #title>
-          <div class="page-header">
-            <h1 class="page-title">Справки ДОД</h1>
-            <p class="page-subtitle">Управление справками дополнительного образования</p>
+          <div class="page-header modern-header">
+            <div class="title-block">
+              <div class="title-eyebrow">Панель управления</div>
+              <h1 class="page-title">Справки ДОД</h1>
+              <p class="page-subtitle">Управление справками дополнительного образования</p>
+            </div>
+            <div class="header-actions">
+              <Button
+                label="Создать справку"
+                icon="pi pi-plus"
+                class="creation-button"
+                @click="createReport"
+              />
+            </div>
           </div>
         </template>
         
         <template #content>
           <!-- Фильтры и табы -->
           <div class="reports-filters">
-            <!-- Фильтр по году -->
-            <div class="year-filter">
-              <label class="filter-label">Год:</label>
-              <Dropdown
-                v-model="selectedYear"
-                :options="availableYears"
-                option-label="label"
-                option-value="value"
-                placeholder="Выберите год"
-                class="year-dropdown"
-                @change="filterByYear"
-              />
+            <div class="filters-left">
+              <div class="search-filter">
+                <label class="filter-label">Поиск:</label>
+                <div class="search-container">
+                  <i class="pi pi-search search-icon"></i>
+                  <InputText
+                    v-model="searchQuery"
+                    placeholder="Поиск по справкам"
+                    class="search-input"
+                  />
+                </div>
+              </div>
+              <div class="year-filter">
+                <label class="filter-label">Год:</label>
+                <Dropdown
+                  v-model="selectedYear"
+                  :options="availableYears"
+                  option-label="label"
+                  option-value="value"
+                  placeholder="Выберите год"
+                  class="year-dropdown"
+                  @change="filterByYear"
+                />
+              </div>
             </div>
-            
-            <!-- Табы для фильтрации справок -->
+
             <div class="reports-tabs">
               <div class="tab-buttons">
                 <Button
@@ -68,6 +90,9 @@
               @row-select="onRowSelect"
               @row-click="onRowClick"
             >
+              <template #empty>
+                <div class="table-empty">Данных пока нет</div>
+              </template>
               <Column field="id" header="ID" :sortable="true" style="width: 80px">
                 <template #body="slotProps">
                   <span class="report-id">{{ slotProps.data.id }}</span>
@@ -124,6 +149,12 @@
                       class="p-button-sm p-button-secondary"
                       @click="viewSections(slotProps.data)"
                     />
+                    <Button
+                      label="Удалить"
+                      icon="pi pi-trash"
+                      class="p-button-sm p-button-danger"
+                      @click.stop="confirmDeleteReport(slotProps.data)"
+                    />
                   </div>
                 </template>
               </Column>
@@ -169,8 +200,9 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
 import Dialog from 'primevue/dialog'
+import InputText from 'primevue/inputtext'
 import { fetchUsers, type BackendUser } from '@/services/users'
-import { fetchMainInfoList, type MainInfo } from '@/services/reports'
+import { fetchMainInfoList, type MainInfo, deleteReport } from '@/services/reports'
 
 const router = useRouter()
 const toast = useToast()
@@ -179,6 +211,7 @@ const toast = useToast()
 const activeTab = ref<'new' | 'rejected' | 'pending' | 'accepted'>('new')
 const selectedYear = ref(null)
 const loading = ref(false)
+const searchQuery = ref('')
 const showReasonDialog = ref(false)
 const reasonText = ref('')
 const reasonTitle = ref('')
@@ -240,18 +273,38 @@ const pendingReports = computed(() => {
 })
 
 const currentReports = computed(() => {
+  let list = []
   switch (activeTab.value) {
     case 'new':
-      return newReports.value
+      list = newReports.value
+      break
     case 'accepted':
-      return acceptedReports.value
+      list = acceptedReports.value
+      break
     case 'rejected':
-      return rejectedReports.value
+      list = rejectedReports.value
+      break
     case 'pending':
-      return pendingReports.value
+      list = pendingReports.value
+      break
     default:
-      return newReports.value
+      list = newReports.value
   }
+  if (!searchQuery.value) return list
+  const q = searchQuery.value.toLowerCase().trim()
+  return list.filter(report => {
+    const haystack = [
+      report.title,
+      report.institution,
+      report.district,
+      report.submittedBy,
+      String(report.id)
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    return haystack.includes(q)
+  })
 })
 
 // Methods
@@ -298,36 +351,62 @@ const viewSections = (report: any) => {
   router.push(`/system/report-sections/${report.id}`)
 }
 
+const createReport = () => {
+  router.push('/system/dod-reports/create')
+}
+
 const openRejectionReason = (report: any) => {
   reasonTitle.value = report.title
   reasonText.value = report.rejectionReason || 'Причина не указана'
   showReasonDialog.value = true
 }
 
-const resolveSubmitter = (organizationName: string, users: BackendUser[]) => {
-  return users.find(user => user.educationalInstitution === organizationName)
-}
-
-const mapReport = (info: MainInfo, users: BackendUser[]) => {
-  const dateSource = info.changeDate2 || info.changeDate1
-  const submittedAt = dateSource ? new Date(dateSource) : new Date()
-  const year = submittedAt.getFullYear()
-  const submitter = resolveSubmitter(info.organizationName, users)
-  const status = info.status || (info.changeNumber2 ? 'На проверке' : 'Новая')
-  return {
-    id: String(info.id),
-    title: `Справка о деятельности ДОД за ${year} год`,
-    institution: info.organizationName,
-    district: submitter?.district || 'Не указан',
-    status,
-    submittedBy: submitter?.name || submitter?.email || 'Не указано',
-    submittedAt,
-    year,
-    completedSections: 0,
-    totalSections: 18,
-    rejectionReason: info.rejectionReason || ''
+const confirmDeleteReport = async (report: any) => {
+  const ok = window.confirm(`Удалить справку «${report.title}»?`)
+  if (!ok) return
+  try {
+    await deleteReport(Number(report.id))
+    reports.value = reports.value.filter(item => item.id !== report.id)
+    toast.add({
+      severity: 'success',
+      summary: 'Справки ДОД',
+      detail: 'Справка удалена',
+      life: 2500
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Справки ДОД',
+      detail: 'Не удалось удалить справку',
+      life: 3000
+    })
   }
 }
+
+  const resolveSubmitter = (organizationName: string, users: BackendUser[]) => {
+    return users.find(user => user.educationalInstitution === organizationName)
+  }
+
+  const mapReport = (info: MainInfo, users: BackendUser[]) => {
+    const dateSource = info.changeDate2 || info.changeDate1
+    const submittedAt = dateSource ? new Date(dateSource) : new Date()
+    const year = submittedAt.getFullYear()
+    const submitter = resolveSubmitter(info.organizationName, users)
+    const status = info.status || (info.changeNumber2 ? 'На проверке' : 'Новая')
+    return {
+      id: String(info.id),
+      title: info.reportTitle || `Справка о деятельности ДОД за ${year} год`,
+      institution: info.organizationName,
+      district: submitter?.district || 'Не указан',
+      status,
+      submittedBy: submitter?.name || submitter?.email || 'Не указано',
+      submittedAt,
+      year,
+      completedSections: 0,
+      totalSections: 18,
+      rejectionReason: info.rejectionReason || ''
+    }
+  }
 
 // Lifecycle
 onMounted(async () => {
@@ -365,76 +444,158 @@ onMounted(async () => {
   animation: fadeIn 0.6s ease-out;
 }
 
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+
 .page-header {
-  text-align: center;
+  text-align: left;
   margin-bottom: 2rem;
 }
 
+.modern-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.title-eyebrow {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #6b7280;
+}
+
 .page-title {
-  font-size: 2rem;
+  font-size: 2.2rem;
   font-weight: 700;
-  color: #2c3e50;
-  margin: 0 0 0.5rem 0;
+  color: #1f2937;
+  margin: 0;
 }
 
 .page-subtitle {
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: #6b7280;
   margin: 0;
 }
 
 .reports-filters {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
   gap: 2rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(22, 63, 94, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(22, 63, 94, 0.1);
+  backdrop-filter: blur(10px);
+  flex-wrap: wrap;
+}
+
+.filters-left {
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.search-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.creation-button {
+  background: #1d4ed8;
+  border: none;
+  color: white;
 }
 
 .year-filter {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
 }
 
 .filter-label {
   font-weight: 600;
   color: #2c3e50;
   white-space: nowrap;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .year-dropdown {
   min-width: 150px;
 }
 
+.search-container {
+  position: relative;
+  width: 100%;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+  z-index: 1;
+}
+
+.search-input {
+  width: 100%;
+  padding-left: 2.5rem;
+  border-radius: 25px;
+  border: 1px solid rgba(22, 63, 94, 0.2);
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+}
+
 .reports-tabs {
   flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
 }
 
 .tab-buttons {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
-.tab-button {
-  padding: 0.75rem 1.5rem;
-  border: 2px solid rgba(22, 63, 94, 0.2);
-  background: rgba(255, 255, 255, 0.6);
-  color: #2c3e50;
-  border-radius: 8px;
+:deep(.tab-button) {
+  padding: 0.7rem 1.2rem;
+  border: 1.5px solid rgba(22, 63, 94, 0.45) !important;
+  background: transparent !important;
+  color: #1f2937 !important;
+  box-shadow: none !important;
+  border-radius: 999px;
   font-weight: 500;
   transition: all 0.3s ease;
 }
 
-.tab-button:hover {
-  background: rgba(22, 63, 94, 0.1);
-  border-color: rgba(22, 63, 94, 0.3);
+:deep(.tab-button:hover) {
+  background: rgba(22, 63, 94, 0.08) !important;
+  border-color: rgba(22, 63, 94, 0.6) !important;
 }
 
-.tab-button.active {
-  background: #163F5E;
-  color: white;
-  border-color: #163F5E;
+:deep(.tab-button.active) {
+  background: #163F5E !important;
+  color: white !important;
+  border-color: #163F5E !important;
 }
 
 .reports-table {
@@ -520,6 +681,12 @@ onMounted(async () => {
   white-space: pre-wrap;
 }
 
+.table-empty {
+  padding: 1.5rem 0;
+  text-align: center;
+  color: #6b7280;
+  font-weight: 500;
+}
 
 @keyframes fadeIn {
   from {

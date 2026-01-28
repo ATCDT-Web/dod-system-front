@@ -72,6 +72,9 @@
             rowHover
             stripedRows
           >
+            <template #empty>
+              <div class="table-empty">Данных пока нет</div>
+            </template>
             <Column field="fullName" header="ФИО" :sortable="true">
               <template #body="{ data }">
                 <div class="admin-name">
@@ -141,6 +144,12 @@
                     @click="toggleStatus(data)"
                     v-tooltip.top="data.status === 'Активен' ? 'Заблокировать' : 'Разблокировать'"
                   />
+                  <Button 
+                    icon="pi pi-trash"
+                    class="p-button-sm p-button-text p-button-danger"
+                    @click.stop="confirmDeleteOuAdmin(data)"
+                    v-tooltip.top="'Удалить'"
+                  />
                 </div>
               </template>
             </Column>
@@ -163,7 +172,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import Tag from 'primevue/tag'
-import { fetchUsers, type BackendUser } from '@/services/users'
+import { fetchUsers, type BackendUser, deleteUser } from '@/services/users'
 
 const router = useRouter()
 const toast = useToast()
@@ -263,6 +272,28 @@ const editOuAdmin = (admin: any) => {
 const toggleStatus = (admin: any) => {
   console.log('Изменение статуса администратора ОУ:', admin)
   // TODO: Реализовать изменение статуса
+}
+
+const confirmDeleteOuAdmin = async (admin: any) => {
+  const ok = window.confirm(`Удалить администратора «${admin.fullName}»?`)
+  if (!ok) return
+  try {
+    await deleteUser(admin.id)
+    ouAdmins.value = ouAdmins.value.filter(item => item.id !== admin.id)
+    toast.add({
+      severity: 'success',
+      summary: 'Администраторы ОУ',
+      detail: 'Администратор ОУ удален',
+      life: 2500
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Администраторы ОУ',
+      detail: 'Не удалось удалить администратора ОУ',
+      life: 3000
+    })
+  }
 }
 
 const onDistrictChange = () => {
@@ -499,6 +530,13 @@ onMounted(async () => {
 .action-buttons {
   display: flex;
   gap: 0.5rem;
+}
+
+.table-empty {
+  padding: 1.5rem 0;
+  text-align: center;
+  color: #6b7280;
+  font-weight: 500;
 }
 
 @keyframes fadeIn {

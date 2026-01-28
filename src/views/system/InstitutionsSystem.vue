@@ -54,6 +54,15 @@
                 />
               </div>
             </div>
+            
+            <div class="creation-filter">
+              <Button
+                icon="pi pi-plus"
+                label="Создать ОУ"
+                class="creation-button p-button-sm"
+                @click="createInstitutionPage"
+              />
+            </div>
           </div>
           <!-- Таблица ОУ -->
           <DataTable 
@@ -71,6 +80,9 @@
             rowHover
             stripedRows
           >
+            <template #empty>
+              <div class="table-empty">Данных пока нет</div>
+            </template>
 
             <Column field="name" header="Название ОУ" :sortable="true">
               <template #body="{ data }">
@@ -146,6 +158,12 @@
                     @click="editInstitution(data)"
                     v-tooltip.top="'Редактировать'"
                   />
+                  <Button 
+                    icon="pi pi-trash"
+                    class="p-button-sm p-button-text p-button-danger"
+                    @click.stop="confirmDeleteInstitution(data)"
+                    v-tooltip.top="'Удалить'"
+                  />
                 </div>
               </template>
             </Column>
@@ -168,7 +186,7 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Dropdown from 'primevue/dropdown'
 import Tag from 'primevue/tag'
-import { fetchUsers, type BackendUser } from '@/services/users'
+import { fetchUsers, type BackendUser, deleteUser } from '@/services/users'
 
 const router = useRouter()
 const toast = useToast()
@@ -269,6 +287,28 @@ const editInstitution = (institution: any) => {
   // TODO: Реализовать редактирование
 }
 
+const confirmDeleteInstitution = async (institution: any) => {
+  const ok = window.confirm(`Удалить ОУ «${institution.name}»?`)
+  if (!ok) return
+  try {
+    await deleteUser(institution.id)
+    institutions.value = institutions.value.filter(item => item.id !== institution.id)
+    toast.add({
+      severity: 'success',
+      summary: 'ОУ',
+      detail: 'Образовательное учреждение удалено',
+      life: 2500
+    })
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'ОУ',
+      detail: 'Не удалось удалить образовательное учреждение',
+      life: 3000
+    })
+  }
+}
+
 const addInstitution = () => {
   console.log('Добавление нового ОУ')
   // TODO: Реализовать добавление
@@ -355,6 +395,10 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+const createInstitutionPage = () => {
+  router.push('/system/institutions/create')
+}
 </script>
 
 <style scoped>
@@ -391,6 +435,7 @@ onMounted(async () => {
 
 .institutions-filters {
   display: flex;
+  align-items: stretch;
   gap: 2rem;
   margin-bottom: 2rem;
   padding: 1.5rem;
@@ -525,6 +570,27 @@ onMounted(async () => {
 .action-buttons {
   display: flex;
   gap: 0.5rem;
+}
+
+.creation-filter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.creation-button {
+  background: #1d4ed8;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+}
+
+.table-empty {
+  padding: 1.5rem 0;
+  text-align: center;
+  color: #6b7280;
+  font-weight: 500;
 }
 
 @keyframes fadeIn {

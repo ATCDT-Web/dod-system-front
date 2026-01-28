@@ -3,9 +3,28 @@
     <div class="report-sections-system">
       <Card class="sections-main-card">
         <template #title>
-          <div class="page-header">
-            <h1 class="page-title">Разделы справки ДОД</h1>
-            <p class="page-subtitle">{{ reportTitle }}</p>
+          <div class="page-header modern-header">
+            <div class="header-leading">
+              <Button
+                icon="pi pi-arrow-left"
+                class="p-button-text back-button"
+                aria-label="Назад"
+                @click="goBack"
+              />
+              <div class="title-block">
+              <div class="title-eyebrow">Справки ДОД</div>
+              <h1 class="page-title">Разделы справки ДОД</h1>
+              <p class="page-subtitle">{{ reportTitle }}</p>
+              </div>
+            </div>
+            <div class="header-actions">
+              <Button
+                label="Импорт из Excel"
+                icon="pi pi-upload"
+                class="p-button-info"
+                @click="showImportDialog = true"
+              />
+            </div>
           </div>
         </template>
         
@@ -250,6 +269,63 @@
       </template>
     </Dialog>
 
+    <!-- Модальное окно импорта -->
+    <Dialog
+      v-model:visible="showImportDialog"
+      header="Импорт справки из Excel"
+      :modal="true"
+      :style="{ width: '640px' }"
+      class="import-dialog"
+    >
+      <div class="import-card">
+        <div class="import-header">
+          <h3 class="import-title">Выберите файлы</h3>
+          <span class="import-subtitle">Можно загрузить один или несколько файлов с разделами</span>
+        </div>
+        <div class="import-controls">
+          <input
+            class="import-input"
+            type="file"
+            multiple
+            accept=".xls,.xlsx"
+            @change="handleImportFiles"
+          />
+          <label class="import-toggle">
+            <input type="checkbox" v-model="isFullImport" />
+            Полная справка (по шаблону)
+          </label>
+        </div>
+        <div v-if="importResult.updatedSections.length" class="import-success">
+          Обновлены разделы: {{ importResult.updatedSections.join(', ') }}
+        </div>
+        <div v-if="importResult.errors.length" class="import-errors">
+          <div class="import-errors-title">Ошибки импорта:</div>
+          <ul>
+            <li v-for="(error, index) in importResult.errors" :key="index">
+              {{ error.section }} · {{ error.message }}
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <template #footer>
+        <Button
+          label="Отмена"
+          icon="pi pi-times"
+          class="p-button-text"
+          @click="showImportDialog = false"
+        />
+        <Button
+          label="Импортировать"
+          icon="pi pi-upload"
+          class="p-button-info"
+          :loading="isImporting"
+          :disabled="importFiles.length === 0 || isImporting"
+          @click="runImport"
+        />
+      </template>
+    </Dialog>
+
   </Layout>
 </template>
 
@@ -263,7 +339,15 @@ import Textarea from 'primevue/textarea'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import { fetchUsers, type BackendUser } from '@/services/users'
-import { fetchContactInfo, fetchMainInfo, fetchUnit, updateReportStatus, type MainInfo } from '@/services/reports'
+import {
+  fetchContactInfo,
+  fetchMainInfo,
+  fetchUnit,
+  importReportExcel,
+  updateReportStatus,
+  type ImportExcelResponse,
+  type MainInfo
+} from '@/services/reports'
 
 const router = useRouter()
 const route = useRoute()
@@ -275,6 +359,11 @@ const showRejectDialog = ref(false)
 const showApproveDialog = ref(false)
 const showTakeDialog = ref(false)
 const rejectionReason = ref('')
+const importFiles = ref<File[]>([])
+const isImporting = ref(false)
+const importResult = ref<ImportExcelResponse>({ updatedSections: [], errors: [] })
+const isFullImport = ref(false)
+const showImportDialog = ref(false)
 
 // Данные справки
 const reportData = ref({
@@ -344,6 +433,47 @@ const openSection = (section: { id: string }) => {
 
 const goBack = () => {
   router.push('/system/dod-reports')
+}
+
+const handleImportFiles = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  importFiles.value = input.files ? Array.from(input.files) : []
+}
+
+const runImport = async () => {
+  const reportId = reportData.value.id
+  if (!reportId || importFiles.value.length === 0) return
+  isImporting.value = true
+  importResult.value = { updatedSections: [], errors: [] }
+  try {
+    importResult.value = await importReportExcel(reportId, importFiles.value, isFullImport.value ? 'full' : 'partial')
+    if (importResult.value.updatedSections.length) {
+      toast.add({
+        severity: 'success',
+        summary: 'Импорт завершен',
+        detail: `Обновлены разделы: ${importResult.value.updatedSections.join(', ')}`,
+        life: 4000
+      })
+    }
+    if (importResult.value.errors.length) {
+      toast.add({
+        severity: 'warn',
+        summary: 'Импорт с ошибками',
+        detail: `Ошибок: ${importResult.value.errors.length}`,
+        life: 4000
+      })
+    }
+    await loadReportSections(String(reportId))
+  } catch {
+    toast.add({
+      severity: 'error',
+      summary: 'Импорт',
+      detail: 'Не удалось импортировать Excel',
+      life: 4000
+    })
+  } finally {
+    isImporting.value = false
+  }
 }
 
 // Действия со справками
@@ -460,14 +590,19 @@ const formatDistrict = (district: string) => {
   return districtLabels[district] || district || 'Не указан'
 }
 
+const isValueFilled = (value: any): boolean => {
+  if (value === null || value === undefined) return false
+  if (typeof value === 'string') return value.trim().length > 0
+  if (Array.isArray(value)) {
+    return value.some(item => isValueFilled(item))
+  }
+  return true
+}
+
 const countFilledFields = (data: Record<string, any>) => {
   const entries = Object.entries(data).filter(([key]) => key !== 'id')
   if (entries.length === 0) return { filled: 0, total: 0 }
-  const filled = entries.filter(([, value]) => {
-    if (value === null || value === undefined) return false
-    if (typeof value === 'string') return value.trim().length > 0
-    return true
-  }).length
+  const filled = entries.filter(([, value]) => isValueFilled(value)).length
   return { filled, total: entries.length }
 }
 
@@ -515,9 +650,10 @@ const applyReportInfo = (info: MainInfo, submitter?: BackendUser) => {
   const dateSource = info.changeDate2 || info.changeDate1
   const submittedAt = dateSource ? new Date(dateSource) : new Date()
   const year = submittedAt.getFullYear()
+  const resolvedTitle = info.reportTitle?.trim()
   reportData.value = {
     id: String(info.id),
-    title: `Справка о деятельности ДОД за ${year} год`,
+    title: resolvedTitle && resolvedTitle.length > 0 ? resolvedTitle : `Справка о деятельности ДОД за ${year} год`,
     institution: info.organizationName,
     district: formatDistrict(submitter?.district || 'Не указан'),
     status: info.status || (info.changeNumber2 ? 'На проверке' : 'Новая'),
@@ -602,25 +738,140 @@ onMounted(() => {
 }
 
 .page-header {
-  text-align: center;
+  text-align: left;
   margin-bottom: 2rem;
 }
 
+.modern-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.header-leading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.title-eyebrow {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #6b7280;
+}
+
 .page-title {
-  font-size: 2rem;
+  font-size: 2.1rem;
   font-weight: 700;
-  color: #2c3e50;
-  margin: 0 0 0.5rem 0;
+  color: #1f2937;
+  margin: 0;
 }
 
 .page-subtitle {
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: #6b7280;
   margin: 0;
 }
 
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.back-button {
+  color: #1f2937;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+}
+
+.back-button:hover {
+  background: rgba(22, 63, 94, 0.08);
+}
+
 .report-info {
   margin-bottom: 2rem;
+}
+
+.import-card {
+  border-radius: 16px;
+  border: 1px solid rgba(22, 63, 94, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  padding: 1.5rem;
+}
+
+.import-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.import-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.import-subtitle {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.import-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.import-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: #2c3e50;
+}
+
+.import-toggle input {
+  width: 16px;
+  height: 16px;
+}
+
+.import-input {
+  flex: 1 1 280px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid rgba(22, 63, 94, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.import-success {
+  margin-top: 0.75rem;
+  color: #15803d;
+  font-weight: 500;
+}
+
+.import-errors {
+  margin-top: 0.75rem;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+.import-errors-title {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
 }
 
 .info-card {

@@ -20,3 +20,8 @@
 .register-bg {
   background-color: #667eea;
 }
+
+/* Глобальный масштаб шрифтов ~80% */
+html {
+  font-size: 80%;
+}
