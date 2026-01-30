@@ -2,6 +2,13 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localho
 
 const buildUrl = (path: string) => (path.startsWith('http') ? path : `${API_BASE_URL.replace(/\/$/, '')}${path.startsWith('/') ? '' : '/'}${path}`)
 
+import { useAuthStore } from '@/stores/auth'
+import { pinia } from '@/stores/pinia'
+
+const clearUserSession = () => {
+  useAuthStore(pinia).clearUser()
+}
+
 export const authFetch = async (path: string, options: RequestInit = {}) => {
   const headers = new Headers(options.headers ?? {})
   if (!headers.has('Content-Type')) {
@@ -15,7 +22,7 @@ export const authFetch = async (path: string, options: RequestInit = {}) => {
   })
 
   if (response.status === 401) {
-    localStorage.removeItem('user')
+    clearUserSession()
     if (window.location.pathname !== '/login') {
       window.location.assign('/login')
     }
@@ -36,7 +43,7 @@ export const authFetchForm = async (path: string, options: RequestInit = {}) => 
   })
 
   if (response.status === 401) {
-    localStorage.removeItem('user')
+    clearUserSession()
     if (window.location.pathname !== '/login') {
       window.location.assign('/login')
     }

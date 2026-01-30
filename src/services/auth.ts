@@ -1,5 +1,7 @@
 import type { LoginCredentials, User } from '@/types'
 import { API_BASE_URL, authFetch } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
+import { pinia } from '@/stores/pinia'
 
 export interface AuthResponse {
   token: string
@@ -29,8 +31,6 @@ export interface RegisterPayload {
   admin?: boolean
 }
 
-const USER_KEY = 'user'
-
 const splitName = (fullName?: string) => {
   const normalized = (fullName || '').trim()
   if (!normalized) {
@@ -42,14 +42,16 @@ const splitName = (fullName?: string) => {
   return { firstName, lastName, fullName: normalized }
 }
 
-export const getStoredUser = (): User | null => {
-  const raw = localStorage.getItem(USER_KEY)
-  if (!raw) return null
-  try {
-    return JSON.parse(raw) as User
-  } catch {
-    return null
-  }
+const getAuthStore = () => useAuthStore(pinia)
+
+export const getStoredUser = (): User | null => getAuthStore().user
+
+export const setStoredUser = (user: User | null): void => {
+  getAuthStore().setUser(user)
+}
+
+export const clearStoredUser = (): void => {
+  getAuthStore().clearUser()
 }
 
 export const isAuthenticated = (): boolean => Boolean(getStoredUser())
@@ -69,7 +71,7 @@ export const saveAuth = (response: AuthResponse): User => {
     role
   }
 
-  localStorage.setItem(USER_KEY, JSON.stringify(user))
+  setStoredUser(user)
   return user
 }
 
@@ -104,7 +106,7 @@ export const fetchUserProfile = async (): Promise<User | null> => {
     role: profile.admin ? 'admin_system' : 'admin_ou'
   }
 
-  localStorage.setItem(USER_KEY, JSON.stringify(updated))
+  setStoredUser(updated)
   return updated
 }
 
@@ -143,7 +145,7 @@ export const register = async (payload: RegisterPayload): Promise<void> => {
 }
 
 export const logout = (): void => {
-  localStorage.removeItem(USER_KEY)
+  clearStoredUser()
 }
 
 export const getHomeRoute = (user: User | null): string => {

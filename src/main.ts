@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import App from './App.vue'
+import { pinia } from './stores/pinia'
 
 // PrimeVue
 import PrimeVue from 'primevue/config'
@@ -138,6 +139,7 @@ router.beforeEach(async (to) => {
 const app = createApp(App)
 
 app.use(router)
+app.use(pinia)
 app.use(PrimeVue, {
   locale: {
     password: {

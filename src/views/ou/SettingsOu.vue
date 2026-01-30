@@ -228,7 +228,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Layout from '@/components/Layout.vue'
 import type { User } from '@/types'
-import { fetchUserProfile, getStoredUser } from '@/services/auth'
+import { fetchUserProfile, getStoredUser, setStoredUser } from '@/services/auth'
 
 const toast = useToast()
 
@@ -317,8 +317,7 @@ const saveEdit = () => {
   if (editValue.value.trim()) {
     user.value[editingField.value as keyof User] = editValue.value as any
     
-    // Сохраняем в localStorage
-    localStorage.setItem('user', JSON.stringify(user.value))
+    setStoredUser(user.value)
     
     toast.add({
       severity: 'success',
