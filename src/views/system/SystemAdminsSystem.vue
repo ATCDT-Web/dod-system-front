@@ -398,11 +398,20 @@ const createSystemAdmin = async () => {
       name: newAdmin.value.name.trim(),
       email: newAdmin.value.email.trim(),
       password: newAdmin.value.password,
-      district: 'central',
-      educationalInstitution: 'Комитет по образованию',
-      position: newAdmin.value.position.trim() || 'Администратор платформы',
-      admin: true
+      position: newAdmin.value.position.trim() || 'Администратор платформы'
     })
+
+    const users = await fetchUsers()
+    const created = users.find(user => user.email === newAdmin.value.email.trim())
+    if (!created) {
+      throw new Error('Не удалось найти созданного администратора')
+    }
+
+    await updateUser(String(created.id), {
+      admin: true,
+      position: newAdmin.value.position.trim() || 'Администратор платформы'
+    })
+
     toast.add({
       severity: 'success',
       summary: 'Администратор создан',
