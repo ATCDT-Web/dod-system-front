@@ -29,6 +29,7 @@ import Dialog from 'primevue/dialog'
 
 // Routes
 import Login from './views/auth/Login.vue'
+import { fetchUserProfile, getHomeRoute, getStoredUser } from './services/auth'
 // System Admin pages
 import DashboardSystem from './views/system/DashboardSystem.vue'
 import DodReportsSystem from './views/system/DodReportsSystem.vue'
@@ -102,38 +103,36 @@ const router = createRouter({
 })
 
 // Navigation guard - упрощенная версия
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to) => {
   const requiresAuth = Boolean(to.meta.requiresAuth)
-  const token = getToken()
   const user = getStoredUser()
 
-  if (requiresAuth && !token) {
-    next({ path: '/login', query: { redirect: to.fullPath } })
-    return
+  if (requiresAuth) {
+    try {
+      const profile = await fetchUserProfile()
+      if (!profile) {
+        return { path: '/login', query: { redirect: to.fullPath } }
+      }
+      if (to.path.startsWith('/system/') && profile.role !== 'admin_system') {
+        return '/ou/dashboard'
+      }
+      if (to.path.startsWith('/ou/') && profile.role !== 'admin_ou') {
+        return '/system/dashboard'
+      }
+    } catch {
+      return { path: '/login', query: { redirect: to.fullPath } }
+    }
   }
 
-  if (!requiresAuth && token && (to.path === '/login' || to.path === '/verify-email')) {
-    next(getHomeRoute(user))
-    return
+  if (!requiresAuth && user && (to.path === '/login' || to.path === '/verify-email')) {
+    return getHomeRoute(user)
   }
 
   if (to.path === '/register') {
-    next('/login')
-    return
+    return '/login'
   }
 
-  if (token && user) {
-    if (to.path.startsWith('/system/') && user.role !== 'admin_system') {
-      next('/ou/dashboard')
-      return
-    }
-    if (to.path.startsWith('/ou/') && user.role !== 'admin_ou') {
-      next('/system/dashboard')
-      return
-    }
-  }
-
-  next()
+  return true
 })
 
 const app = createApp(App)
@@ -167,4 +166,3 @@ app.component('Toast', Toast)
 app.component('Dialog', Dialog)
 
 app.mount('#app')
-import { getHomeRoute, getStoredUser, getToken } from './services/auth'
