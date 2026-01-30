@@ -29,7 +29,6 @@ export interface RegisterPayload {
   admin?: boolean
 }
 
-const TOKEN_KEY = 'auth_token'
 const USER_KEY = 'user'
 
 const splitName = (fullName?: string) => {
@@ -43,8 +42,6 @@ const splitName = (fullName?: string) => {
   return { firstName, lastName, fullName: normalized }
 }
 
-export const getToken = (): string | null => localStorage.getItem(TOKEN_KEY)
-
 export const getStoredUser = (): User | null => {
   const raw = localStorage.getItem(USER_KEY)
   if (!raw) return null
@@ -55,7 +52,7 @@ export const getStoredUser = (): User | null => {
   }
 }
 
-export const isAuthenticated = (): boolean => Boolean(getToken())
+export const isAuthenticated = (): boolean => Boolean(getStoredUser())
 
 export const saveAuth = (response: AuthResponse): User => {
   const { firstName, lastName, fullName } = splitName(response.name)
@@ -72,17 +69,12 @@ export const saveAuth = (response: AuthResponse): User => {
     role
   }
 
-  if (response.token) {
-    localStorage.setItem(TOKEN_KEY, response.token)
-  }
   localStorage.setItem(USER_KEY, JSON.stringify(user))
   return user
 }
 
 export const fetchUserProfile = async (): Promise<User | null> => {
   const storedUser = getStoredUser()
-  if (!getToken()) return null
-
   const response = await authFetch('/api/user/me')
 
   if (!response.ok) {
@@ -119,6 +111,7 @@ export const fetchUserProfile = async (): Promise<User | null> => {
 export const login = async (credentials: LoginCredentials): Promise<User> => {
   const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json'
     },
@@ -136,6 +129,7 @@ export const login = async (credentials: LoginCredentials): Promise<User> => {
 export const register = async (payload: RegisterPayload): Promise<void> => {
   const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json'
     },
@@ -149,7 +143,6 @@ export const register = async (payload: RegisterPayload): Promise<void> => {
 }
 
 export const logout = (): void => {
-  localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(USER_KEY)
 }
 
