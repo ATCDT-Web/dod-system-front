@@ -25,9 +25,9 @@ export interface RegisterPayload {
   name: string
   email: string
   password: string
-  district: string
-  educationalInstitution: string
-  position: string
+  district?: string
+  educationalInstitution?: string
+  position?: string
   admin?: boolean
 }
 
