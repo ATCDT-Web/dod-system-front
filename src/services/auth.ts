@@ -81,28 +81,35 @@ export const saveAuth = (response: AuthResponse): User => {
 
 export const fetchUserProfile = async (): Promise<User | null> => {
   const storedUser = getStoredUser()
-  if (!storedUser?.email) return null
+  if (!getToken()) return null
 
-  const response = await authFetch('/api/user/getAllUsers')
+  const response = await authFetch('/api/user/me')
 
   if (!response.ok) {
     throw new Error('Не удалось загрузить данные профиля')
   }
 
-  const users = (await response.json()) as BackendUser[]
-  const match = users.find(user => user.email === storedUser.email)
-  if (!match) return null
-
-  const { firstName, lastName, fullName } = splitName(match.name)
+  const profile = (await response.json()) as BackendUser
+  const { firstName, lastName, fullName } = splitName(profile.name)
   const updated: User = {
-    ...storedUser,
-    email: match.email,
-    firstName: firstName || storedUser.firstName,
-    lastName: lastName || storedUser.lastName,
-    fullName: fullName || storedUser.fullName,
-    district: match.district || storedUser.district,
-    institutionName: match.educationalInstitution || storedUser.institutionName,
-    role: match.admin ? 'admin_system' : 'admin_ou'
+    ...(storedUser ?? {
+      id: profile.email,
+      email: profile.email,
+      firstName: '',
+      lastName: '',
+      fullName: '',
+      district: '',
+      institutionType: '',
+      institutionName: '',
+      role: 'admin_ou'
+    }),
+    email: profile.email,
+    firstName: firstName || storedUser?.firstName || '',
+    lastName: lastName || storedUser?.lastName || '',
+    fullName: fullName || storedUser?.fullName || '',
+    district: profile.district || storedUser?.district || '',
+    institutionName: profile.educationalInstitution || storedUser?.institutionName || '',
+    role: profile.admin ? 'admin_system' : 'admin_ou'
   }
 
   localStorage.setItem(USER_KEY, JSON.stringify(updated))
